@@ -840,6 +840,7 @@ const generateBook = async (destp, bookp) => {
     return x.title.localeCompare(y.title);
   };
   const hify = (ctc) => {
+    console.log(ctc)
     const d = h('div', {class: "row chapter dynamic"});
     const cs = [];
     if ( ctc.isBook || Object.keys(ctc.children).length === 0 ) {
@@ -872,9 +873,7 @@ const generateBook = async (destp, bookp) => {
     const bcPush = () => {
       bc.push(
         h('div', {class: "row chapter dynamic"}, [
-          h('div', {class: "col-auto chapter-icon-col"}, [
-            h('i', {class: "fas fa-angle-down"})
-          ]),
+          h('div', {class: "col-auto chapter-empty-col"}),
           h('div', {class: "col my-auto"}, [
             h('a', {class: "book-title", href: hh(ct.here)}, ct.title)
           ]),

@@ -947,8 +947,12 @@
     "title": "Quickstart",
     "path": "/quickstart/#quickstart"
   },
+  "reach-bottom": {
+    "title": "Options",
+    "path": "/#reach-bottom"
+  },
   "reach-top": {
-    "title": "Reach: The Smartest, Fastest, and Safest DApp Programming Language",
+    "title": "Getting Started",
     "path": "/#reach-top"
   },
   "ref": {

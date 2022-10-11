@@ -158,7 +158,20 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
   if (configJson.bookPath !== undefined && configJson.bookPath !== currentPage.bookPath) {
     let bookHtml = doc.createRange().createContextualFragment(await axiosGetData(`${window.location.origin}${hh(configJson.bookPath)}book.html`));
     doc.querySelectorAll('#book-col div.dynamic').forEach(n => n.remove());
-    doc.querySelector('#book-col').append(bookHtml);
+    function insertAfter(newNode, existingNode) {
+      existingNode.parentNode.insertBefore(newNode, existingNode.nextSibling);
+    }
+    insertAfter(bookHtml, document.getElementById("toggle-icon"));
+
+    doc.querySelectorAll("#book-col .chapter-title").forEach((item,index)=>{
+
+      if (index >= 25 && index <= 27){
+        if(index === 25){
+          item.parentNode.classList.add('first-bottom-chapter')
+        }
+        item.classList.add('bottom-chapter');
+      }
+    })
 
     // On click chapter-icon.
     doc.querySelectorAll('#book-col i.chapter-icon').forEach(el => {
@@ -319,6 +332,7 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
 
   // Display page.
   doc.querySelector('div#hh-page-header').style.display = configJson.hasPageHeader ? 'block' : 'none';
+  doc.querySelector('div#hh-page-header').style.border =  'none';
 
   doc.getElementById('page-col').style.display = 'block';
 

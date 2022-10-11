@@ -50,7 +50,7 @@
       localStorage.setItem(item, "none");
     };
 
-    // https://stackoverflow.com/a/68824350
+    // https://stackoverflow.com/a/688243
     const toggleTheme = () => {
       const { classList } = document.documentElement;
       const toggle = document.getElementById("themeToggler");
@@ -64,6 +64,7 @@
     };
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://uploads-ssl.webflow.com/627a9662f6627643e7654761/css/reach-platform.webflow.92b3e72b5.css" rel="stylesheet" type="text/css">
   <link rel="icon" type="image/png" href="/assets/favicon.png">
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/instantsearch.css@7.3.1/themes/reset-min.css" integrity="sha256-t2ATOGCtAIZNnzER679jwcFcKYfLlw01gli6F6oszk8=" crossorigin="anonymous">
@@ -73,41 +74,25 @@
 
 <body class="container-fluid noscroll">
 
-  <div class="row">
-    <header class="navbar navbar-expand-lg navbar-dark bg-dark" role="navigation">
-      <a class="navbar-brand" href="@{xrefHref('reach-top')}"><img src="/assets/logo.png" width="32" height="26" alt="logo"></a>
-      <a id="mi-home" class="navbar-brand" href="@{xrefHref('reach-top')}">Reach</a>
+  <div class="row row-navbar">
+    <header id="navbar-toggle" class="navbar navbar-expand-lg navbar-light justify-content-between" role="navigation">
+      <div>
+        <a class="navbar-brand" href="@{xrefHref('reach-top')}"><img src="/assets/logo.png" width="32" height="26" alt="logo"></a>
+        <a id="mi-home" class="navbar-brand" href="@{xrefHref('reach-top')}">Reach</a>
+      </div>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-collapse"><span class="navbar-toggler-icon"></span></button>
-      <div class="collapse navbar-collapse" id="navbar-collapse">
-
-        <div class="navbar-nav me-auto">
-          @{menuItem('ref-programs')}
-          @{menuItem('ref-frontends')}
-          @{menuItem('tuts')}
-          @{menuItem('guide-changelog')}
-        </div>
-
+      <div class="collapse navbar-collapse justify-content-end" id="navbar-collapse">
         <div class="navbar-nav">
-          <a class="nav-link follow" href="https://reach.sh/">reach.sh</a>
+          <a class="nav-link follow" href="https://reach.sh/">To Reach.sh</a>
         </div>
-
-        <div class="navbar-nav" style="cursor: pointer;">
-          <li class="nav-item nav-link">
-            <a class="nav-link-a"  id="themeToggler" onclick="toggleTheme()"></a>
-            <a class="nav-link-a follow" href="https://github.com/reach-sh/reach-lang/discussions"><i class="fas fa-comments fa-lg"></i></a>
-            <a class="nav-link-a follow" href="https://discord.com/invite/AZsgcXu"><i class="fab fa-discord fa-lg"></i></a>
-            <a class="nav-link-a follow" href="https://github.com/reach-sh/reach-lang"><i class="fab fa-github fa-lg"></i></a>
-            <a class="nav-link-a follow" href="https://twitter.com/reachlang"><i class="fab fa-twitter fa-lg"></i></a>
-            <a class="nav-link-a follow" href="https://www.youtube.com/c/Reachsh"><i class="fab fa-youtube fa-lg"></i></a>
-            <a class="nav-link-a follow" href="https://www.reddit.com/r/reach_sh"><i class="fab fa-reddit-square fa-lg"></i></a>
-          </li>
-        </div>
-
         <div class="navbar-nav ms-1 ms-lg-2" style="cursor: pointer;">
           @{menuItem(
             'search',
             '<i class="fas fa-search fa-lg" id="search-icon"></i>'
           )}
+        </div>
+        <div class="navbar-nav">
+          <a class="nav-link-a"  id="themeToggler" onclick="toggleTheme()"></a>
         </div>
 
       </div>
@@ -118,7 +103,7 @@
 
     <!--BOOK COLUMN-->
     <div id="book-col" class="col display" style="display:none;">
-      <div class="col-auto x-icon-col" style="float: right; display: flex;">
+      <div id="toggle-icon" class="col-auto x-icon-col" style="float: right; display: flex;">
         <button
           class="btn btn-outline-secondary btn-sm hide-book-icon"
           onclick="setItemToNone(event, 'book-col')"
@@ -129,12 +114,30 @@
           />
         </button>
       </div>
+      <div class="navbar-nav" style="cursor: pointer;">
+        <p class="nav-text">Connect with us</p>
+        <li class="nav-item nav-link">
+          <a class="nav-link-a follow" href="https://github.com/reach-sh/reach-lang/discussions"><i class="fas fa-comments fa-lg"></i></a>
+          <a class="nav-link-a follow" href="https://discord.com/invite/AZsgcXu"><i class="fab fa-discord fa-lg"></i></a>
+          <a class="nav-link-a follow" href="https://github.com/reach-sh/reach-lang"><i class="fab fa-github fa-lg"></i></a>
+          <a class="nav-link-a follow" href="https://twitter.com/reachlang"><i class="fab fa-twitter fa-lg"></i></a>
+          <a class="nav-link-a follow" href="https://www.youtube.com/c/Reachsh"><i class="fab fa-youtube fa-lg"></i></a>
+          <a class="nav-link-a follow" href="https://www.reddit.com/r/reach_sh"><i class="fab fa-reddit-square fa-lg"></i></a>
+        </li>
+      </div>
     </div>
     <!--END BOOK COLUMN-->
 
     <!--PAGE COLUMN-->
     <div id="page-col" class="col display" style="display:none;">
-      <div id="hh-viewer-wrapper" style="margin-right: auto; margin-left: auto;">
+      <div class="bg-image">
+        <div class="banner-text-container">
+          <img src="/assets/img/big-logo.svg" width="197" height="145" alt="logo">
+          <p class="title-background"> Reach <span style="font-weight:bold">documentation</span></p>
+          <p class="text-logo">The Smartest, Fastest, and Safest DApp Programming Language</p>
+        </div>
+      </div>
+      <div id="hh-viewer-wrapper" style="margin-right: auto; margin-left: auto; margin-top: 50px;">
         <div id="hh-page-header">
           <div class="row">
             <div class="col-auto show-book-col pe-0">

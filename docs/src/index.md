@@ -1,7 +1,30 @@
-# {#reach-top} Reach: The Smartest, Fastest, and Safest DApp Programming Language
+# {#reach-top} Getting Started
 
 <head>
     <style>
+        #reach-top {
+            font-family: 'Reach Favorit';
+            width: 141px;
+            height: 44px;
+            font-style: normal;
+            font-weight: 500;
+            font-size: 40px;
+            line-height: 43px;
+        }
+        .card a {
+            display:flex;
+            flex-direction:row;
+        }
+        .card a {
+            display:flex;
+            flex-direction:row;
+            flex-wrap:wrap;
+        }
+        .card a div{
+            display:flex;
+            flex-direction:column;
+            width: 50%;
+        }
         .card-text {
             color: #d1e3f0;
             font-weight: 700;
@@ -9,83 +32,47 @@
         .img-fluid:hover + p {
             color: #4536da;
         }
+        .banner {
+            position:absolute;
+            top:0;
+            left:0;
+        }
     </style>
 </head>
-<div class="container-sm g-3">
-    <div class="row">
-        <section class="col-sm-4 p-2">
-            <a href="/build/#build">
-                <img src="../assets/img/build-df.svg"
-                    class="img-fluid bg-dark"
-                    onmouseover="this.src='../assets/img/build-hv.svg';"
-                    onmouseout="this.src='../assets/img/build-df.svg';"
-                    onclick="this.src='../assets/img/build-hv.svg';"
-                    alt="Why Builders Need Reach"
-                />
-                <p class="card-text mt-2">Build with us</p>
-            </a>
-        </section>
-        <section class="col-sm-4 p-2">
-            <a href="/quickstart/#quickstart">
-                <img src="../assets/img/download-df.svg"
-                    class="img-fluid bg-dark"
-                    onmouseover="this.src='../assets/img/download-hv.svg';"
-                    onmouseout="this.src='../assets/img/download-df.svg';"
-                    onclick="this.src='../assets/img/download-hv.svg':"
-                    alt="Download Reach"
-                />
-                <p class="card-text mt-2">Download Reach</p>
-            </a>
-        </section>
-        <section class="col-sm-4 p-2">
+<div class="g-3">
+    <p>Read an overview of the language or dive straight into the code with tutorials</p>
+        <div class="col-sm-4 p-2 card" >
             <a href="/tut/#tuts">
-                <img src="../assets/img/learn-df.svg"
-                    class="img-fluid bg-dark"
-                    onmouseover="this.src='../assets/img/learn-hv.svg';"
-                    onmouseout="this.src='../assets/img/learn-df.svg';"
-                    onclick="this.src='../assets/img/learn-hv.svg';"
-                    alt="Learn Reach with Tutorials"
-                />
-                <p class="card-text mt-2">Learn Reach</p>
+                <img class="banner" src="../assets/img/read.svg"/>
+                <div>
+                 <p class= "learn" class="card-text mt-2">Learn Reach</p>
+                    <p class="learn-text" class="card-text mt-2">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ipsum quam inte</p>
+                </div>
+                <img src="../assets/img/learn-reach.svg"/>
             </a>
-        </section>
-    </div>
-    <div class="row">
-        <section class="col-sm-4 p-2">
-            <a href="@{DISCORD}">
-                <img src="../assets/img/comm-df.svg"
-                    class="img-fluid bg-dark"
-                    onmouseover="this.src='../assets/img/comm-hv.svg';"
-                    onmouseout="this.src='../assets/img/comm-df.svg';"
-                    onclick="this.src='../assets/img/comm-hv.svg';"
-                    alt="Join the Discord Community"
-                />
-                <p class="card-text mt-2">Join Us</p>
+        </div>
+        <div class="col-sm-4 p-2 card">
+            <a href="/build/#build">
+                <img class="banner" src="../assets/img/use.svg"/>
+                <div>
+                 <p class="use" class="card-text mt-2">Build with us</p>
+                <p class="use-text" class="card-text mt-2">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ipsum quam inte</p>
+                </div>
+                <img src="../assets/img/build-with-us.svg"/>
             </a>
-        </section>
-        <section class="col-sm-4 p-2">
-            <a href="@{DISCUSSIONS}">
-                <img src="../assets/img/help-df.svg"
-                    class="img-fluid bg-dark"
-                    onmouseover="this.src='../assets/img/help-hv.svg';"
-                    onmouseout="this.src='../assets/img/help-df.svg';"
-                    onclick="this.src='../assets/img/help-hv.svg';"
-                    alt="Ask Questions in GitHub Discussions"
-                />
-                <p class="card-text mt-2">Get Help</p>
+        </div>
+        <div class="col-sm-4 p-2 card">
+            <a href="/quickstart/#quickstart">
+                <img class="banner" src="../assets/img/use.svg"/>
+                <div>
+                <p class="use" class="card-text mt-2">Connect to Reach Cloud</p>
+                <p class="use-text" class="card-text mt-2">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ipsum quam inte</p>
+                </div>
+                <img src="../assets/img/connect-with-us.svg"/>
             </a>
-        </section>
-        <section class="col-sm-4 p-2">
-            <a href="@{REPO}">
-                <img src="../assets/img/contrib-df.svg"
-                    class="img-fluid bg-dark"
-                    onmouseover="this.src='../assets/img/contrib-hv.svg';"
-                    onmouseout="this.src='../assets/img/contrib-df.svg';"
-                    onclick="this.src='../assets/img/contrib-hv.svg';"
-                    alt="View and Contribute to the Source Code"
-                />
-                <p class="card-text mt-2">Contribute</p>
-            </a>
-        </section>
-    </div>
+        </div>
 </div>
+
+# {#reach-bottom} Options
+
+<div>Hello</div>
