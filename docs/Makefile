@@ -61,3 +61,12 @@ watch:
 	 else \
 	   echo 'Unable to find `inotifywait` or `fswatch`.' && exit 1; \
 	 fi
+
+.PHONY: netlify-build
+netlify-build:
+	DOCKER_BUILDKIT=1 docker build \
+	  --build-arg REACHC_HASH="$$(../scripts/git-hash.sh)" \
+	  --build-arg DOCS_IMAGE=${netlify/build} \
+	  --pull=false \
+	  -o $$(pwd) \
+	  -f Dockerfile ..
