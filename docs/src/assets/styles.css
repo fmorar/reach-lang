@@ -135,6 +135,8 @@ main {
   --reach-red: #F45747;
   --reach-red-hover: #B62B1B;
   --background-reach: #5C4FF0;
+  --icon-hover: #6B5EE0;
+  --explore: #E04747;
 
   --shiki-color-text: #24292E;
   --shiki-color-background: var(--snippet);
@@ -192,6 +194,8 @@ main {
     --reach-red-hover: #B62B1B;
     --background-reach: #5C4FF0;
     --card-section: #303030;
+    --icon-hover: #6B5EE0;
+    --explore: #E04747;
 
     --shiki-color-text: #d0d0d0;
     --shiki-color-background: var(--snippet);
@@ -248,6 +252,8 @@ main {
   --reach-red-hover: #B62B1B;
   --background-reach: #05172E;
   --card-section: #303030;
+  --icon-hover: #6B5EE0;
+  --explore: #E04747;
 
   --shiki-color-text: #d0d0d0;
   --shiki-color-background: var(--snippet);
@@ -315,6 +321,20 @@ header div.navbar-nav a:hover span,
 #book-col .navbar-nav {
   border-top: solid 1px;
   margin: 2rem;
+  font-size: 1.5em;
+}
+
+#book-col .navbar-nav .nav-item{
+  display: flex;
+  flex-wrap: wrap;
+}
+
+#book-col .navbar-nav .nav-item .nav-link-a{
+  padding: .6rem;
+}
+
+#book-col .navbar-nav .nav-item .nav-link-a i:hover{
+  color: var(--icon-hover);
 }
 
 .nav-link {
@@ -361,6 +381,11 @@ i.fa-angle-right {
   background-color: var(--light-mode-white);
 }
 
+.first-row{
+  position: relative;
+  background-color: var(--card-section);
+}
+
 .learn{
   font-family: 'Reach Favorit';
   font-style: normal;
@@ -399,7 +424,7 @@ i.fa-angle-right {
 
 .bg-image {
   background-image: url("./img/background-reach-repeat.svg");
-  height: 20vw;
+  height: calc(20rem + 3.3vw);
   background-color:var(--background-reach);
   background-position: center;
   background-position-x: center;
@@ -407,25 +432,21 @@ i.fa-angle-right {
   background-attachment: initial;
   background-size: 100% 100%;
   background-repeat: repeat-x;
-  margin: -16px -24px;
+  margin: -66px -24px 1.5rem -24px;
+}
+
+#collapse-button{
+  float: left;
 }
 
 .title-background {
   height: 72px;
-
   font-family: 'Reach Favorit';
   font-style: normal;
   font-weight: 400;
-  font-size: 64px;
+  font-size: calc(2rem + 3.3vw);
   line-height: 72px;
-
-  /* identical to box height, or 112% */
-
-  /* Primary/Main/Reach White */
   color: #FFFFFF;
-
-
-  /* Inside auto layout */
   flex: none;
   order: 0;
   flex-grow: 0;
@@ -471,7 +492,10 @@ i.fa-angle-right {
 
 .bottom-chapter{
   text-transform: uppercase;
-  font-weight: 700;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 0%;
 }
 
 .first-bottom-chapter{
@@ -685,7 +709,40 @@ p.punch span {
   color: var(--page-col-p-q-and-a);
   cursor: pointer;
 }
+ 
+.language{
+  margin: 0 -24px;
+  background-color: var(--explore);
+  display: flex;
+  flex-direction: column; 
+  align-items: flex-start;
+  padding: 72px 140px;
+}
 
+.blue-bg-text{
+  background: #4536DA;
+  color: #FFFFFF;
+  font-weight: 500;
+  font-size: 40px;
+}
+
+.white-bg-text{
+  background: #FFFFFF;
+  color: var(--explore);
+  font-weight: 500;
+  font-size: 40px;
+}
+
+.intro-title-text{
+  font-weight: 500;
+  font-size: 40px;
+}
+
+.explore-title-text{
+  color: #FFFFFF;
+  font-weight: 500;
+  font-size: 40px;
+}
 
 /************************************************
  blockquote
@@ -922,11 +979,6 @@ iframe.gray-scale {
 /************************************************
  Module Cards
 ************************************************/
-
-#page-col div.card {
-  background: var(--page-col-div-card);
-  border: 1px solid var(--page-col-div-card);
-}
 
 #page-col div.card a,
 #page-col div.card a:active,

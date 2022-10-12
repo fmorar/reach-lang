@@ -331,8 +331,7 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
   }
 
   // Display page.
-  doc.querySelector('div#hh-page-header').style.display = configJson.hasPageHeader ? 'block' : 'none';
-  doc.querySelector('div#hh-page-header').style.border =  'none';
+  doc.querySelector('div#hh-page-header').style.display = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? 'block' : 'none' : 'none';
 
   doc.getElementById('page-col').style.display = 'block';
 
@@ -405,6 +404,8 @@ const makeShowHide = (hideQ, showQ, showId) => {
       if (winWidth == 'sm' || winWidth == 'xs') {
         doc.getElementById('page-col').style.display = x;
       }
+      console.log(showId,y)
+      console.log(showQ, x)
       doc.getElementById(showId).style.display = y;
       doc.querySelector(showQ).style.display = x;
     });
@@ -415,6 +416,7 @@ const makeShowHide = (hideQ, showQ, showId) => {
 
 makeShowHide('button.hide-book-icon', 'div.show-book-col', 'book-col');
 makeShowHide('button.hide-otp-icon', 'button.show-otp-col', 'otp-col');
+makeShowHide('button.hide-book-icon', '#collapse-button', 'book-col');
 
 doc.getElementById('page-col').addEventListener('scroll', scrollHandler);
 
