@@ -10,6 +10,7 @@ jobs:
       steps:
       - name: checkout repo
         uses: actions/checkout@v2
-      - name: build application
+      - name: build application    
+        working-directory: ./docs
         run: make build
 
