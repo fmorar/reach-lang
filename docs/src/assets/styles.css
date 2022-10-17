@@ -91,6 +91,20 @@ main {
   }
 }
 
+@media (max-width: 576px) {
+.diamond-shape{
+  position: absolute;
+  top: 200%;
+}
+.last-number-line, .number-line, .first-number-line{
+  display: none;
+}
+.first-explore-row{
+  padding-left: 3rem;
+  margin-left: 1rem;
+}
+}
+
 /************************************************
  color constants
 ************************************************/
@@ -377,7 +391,7 @@ i.fa-angle-right {
 }
 
 #page-col {
-  padding: 16px 24px;
+  padding: 16px 0;
   background-color: var(--light-mode-white);
 }
 
@@ -385,6 +399,47 @@ i.fa-angle-right {
   position: relative;
   background-color: var(--card-section);
 }
+
+.first-explore-row{
+  position: relative;
+  border: 1px solid #FFFFFF;
+  background-color: #E04747;
+  height: 70%;
+}
+
+.first-explore-row:hover{
+  position: relative;
+  border: 1px solid #FFFFFF;
+  color: #E04747;
+  background-color: #FFFFFF;
+  height: 70%;
+}
+
+.first-explore-row:hover .explore-text {
+  color: #E04747;
+}
+
+.first-explore-row:hover .img-fluid {
+  color: #E04747;
+}
+
+.first-explore-row:hover .explore-title{
+  color: #E04747;
+}
+
+.first-explore-row:hover .explore-link{
+  color: #E04747;
+}
+
+.first-explore-row:hover + .shape-section > .diamond-shape{
+  background-color: #FFFFFF;
+  border: 1px solid #E04747;
+}
+
+.first-explore-row:hover + .shape-section > .diamond-shape > .item-count{
+  color: #E04747;
+}
+
 
 .learn{
   font-family: 'Reach Favorit';
@@ -422,6 +477,86 @@ i.fa-angle-right {
   color: #B5B0F0;
 }
 
+.explore-title{
+  font-family: 'Reach Favorit';
+  font-style: normal;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 120%;
+  color: #FFFFFF;
+}
+
+.explore-text{
+  font-family: 'Reach Favorit';
+  font-style: normal;
+  font-weight: 400;
+  font-size: 12.9571px;
+  line-height: 17px;
+  color: #FFFFFF;
+}
+
+.explore-link{
+  font-family: 'Reach Favorit';
+  font-style: normal;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 120%;
+  color: #FFFFFF;
+  position: absolute;
+  bottom: 0;
+}
+
+.img-hover{
+  color: blue;
+}
+
+.shape-section {
+  padding: 40px 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.diamond-shape {
+  border: 1px solid #fff;
+  height: 32px;
+  text-align: center;
+  transform:rotate(45deg);
+	width:32px;
+  margin: auto;
+  background-color: var(--explore);
+  z-index: 1;
+}
+.item-count {
+  color: #fff;
+  display: table-cell;
+  height: 32px;
+  transform: rotate(-45deg);
+  vertical-align: middle;
+	width:32px;
+}
+
+.number-line{
+  border: 1px solid;
+  position: absolute;
+  right: 0;
+  width: 120%;
+}
+
+.first-number-line{
+  border: 1px solid;
+  position: absolute;
+  right: 0;
+  width: 55%;
+}
+
+.last-number-line{
+  border: 1px solid;
+  position: absolute;
+  left: -20px;
+  width: 55%;
+}
+
 .bg-image {
   background-image: url("./img/background-reach-repeat.svg");
   height: calc(20rem + 3.3vw);
@@ -432,7 +567,7 @@ i.fa-angle-right {
   background-attachment: initial;
   background-size: 100% 100%;
   background-repeat: repeat-x;
-  margin: -66px -24px 1.5rem -24px;
+  margin-top: -66px;
 }
 
 #collapse-button{
@@ -440,12 +575,10 @@ i.fa-angle-right {
 }
 
 .title-background {
-  height: 72px;
   font-family: 'Reach Favorit';
   font-style: normal;
   font-weight: 400;
-  font-size: calc(2rem + 3.3vw);
-  line-height: 72px;
+  font-size: calc(2rem + 2vw);
   color: #FFFFFF;
   flex: none;
   order: 0;
@@ -457,13 +590,10 @@ i.fa-angle-right {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  flex-wrap: wrap;
 }
 
 .text-logo {
-  width: 588px;
-  height: 34px;
-
   font-family: 'Reach Favorit';
   font-style: normal;
   font-weight: 300;
@@ -584,10 +714,6 @@ i.fas:hover {
 #page-col div#hh-page-header {
   border-bottom: 3px double var(--soft1);
   padding-bottom: 16px;
-}
-
-#page-col div#hh-viewer-wrapper {
-  max-width: 1700px;
 }
 
 #page-col div#hh-viewer-wrapper span.title {
@@ -711,19 +837,25 @@ p.punch span {
 }
  
 .language{
-  margin: 0 -24px;
   background-color: var(--explore);
   display: flex;
   flex-direction: column; 
   align-items: flex-start;
-  padding: 72px 140px;
+  color: #FFFFFF;
 }
 
 .blue-bg-text{
   background: #4536DA;
-  color: #FFFFFF;
   font-weight: 500;
   font-size: 40px;
+  color: #FFFFFF;
+}
+
+.light-blue-bg-text{
+  background: #70A1D6;
+  font-weight: 500;
+  font-size: 40px;
+  color: #FFFFFF;
 }
 
 .white-bg-text{
@@ -739,9 +871,17 @@ p.punch span {
 }
 
 .explore-title-text{
-  color: #FFFFFF;
   font-weight: 500;
   font-size: 40px;
+}
+
+.roadmap-top-text-container {
+  width: 100%;
+  border: 1px solid;
+}
+
+.roadmap-top-text{
+  text-align: center;
 }
 
 /************************************************
