@@ -332,7 +332,9 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
 
   // Display page.
   doc.querySelector('div#hh-page-header').style.display = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? 'block' : 'none' : 'none';
-
+  doc.querySelector('#page-col').style.padding = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '16px 24px' : '16px 0' : '16px 0';
+  doc.querySelector('#collapse-button').style.display = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? 'none' : 'block' : 'block';
+ 
   doc.getElementById('page-col').style.display = 'block';
 
   // Display OTP.

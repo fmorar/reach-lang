@@ -840,7 +840,6 @@ const generateBook = async (destp, bookp) => {
     return x.title.localeCompare(y.title);
   };
   const hify = (ctc) => {
-    console.log(ctc)
     const d = h('div', {class: "row chapter dynamic"});
     const cs = [];
     if ( ctc.isBook || Object.keys(ctc.children).length === 0 ) {
