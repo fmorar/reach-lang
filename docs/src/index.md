@@ -121,6 +121,7 @@
     </section>
   </div>
 </div>
+
 <div class="language">
   <div class="container-sm g-3 mb-4">
     <p class="explore-title-text">
@@ -261,6 +262,7 @@
     </div>
   </div>
 </div>
+
 <div class="container-sm g-3 mb-4">
   <p class="intro-title-text">
     Help & <span class="light-blue-bg-text">Support</span>
@@ -314,5 +316,14 @@
         </div>
       </a>
     </section>
+  </div>
+</div>
+
+<div class="footer">
+  <div class="container-sm g-3 mb-4">
+    <p class="explore-title-text">
+      Get Reach Updates</span>
+    </p>
+    <p>You will be notified with Reach updates, news and announcements.</p>
   </div>
 </div>

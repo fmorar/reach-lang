@@ -330,10 +330,11 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
     doc.querySelector('div.show-book-col').classList.add('banish');
   }
 
-  // Display page.
-  doc.querySelector('div#hh-page-header').style.display = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? 'block' : 'none' : 'none';
-  doc.querySelector('#page-col').style.padding = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '16px 24px' : '16px 0' : '16px 0';
-  doc.querySelector('#collapse-button').style.display = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? 'none' : 'block' : 'block';
+  // Display homepage styles.
+  doc.querySelector('div#hh-page-header .col').style.display = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? 'block' : 'none' : 'none';
+  doc.querySelector('div#hh-page-header').style.cssText = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '' : 'margin: 0;float:left;border:none' : 'margin: 0;float:left;border:none';
+  doc.querySelector('div.show-book-col').style.cssText = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '' : 'background-color:white' : 'background-color:white';
+  doc.querySelector('#page-col').style.padding = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '16px 24px' : '16px 0 0 0' : '16px 0 0 0';
  
   doc.getElementById('page-col').style.display = 'block';
 
@@ -418,7 +419,6 @@ const makeShowHide = (hideQ, showQ, showId) => {
 
 makeShowHide('button.hide-book-icon', 'div.show-book-col', 'book-col');
 makeShowHide('button.hide-otp-icon', 'button.show-otp-col', 'otp-col');
-makeShowHide('button.hide-book-icon', '#collapse-button', 'book-col');
 
 doc.getElementById('page-col').addEventListener('scroll', scrollHandler);
 

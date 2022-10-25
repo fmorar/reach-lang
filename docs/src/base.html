@@ -82,25 +82,24 @@
 
   <div class="row row-navbar">
     <header id="navbar-toggle" class="navbar navbar-expand-lg navbar-light justify-content-between" role="navigation">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-collapse"><span class="navbar-toggler-icon"></span></button>
       <div>
         <a class="navbar-brand" href="@{xrefHref('reach-top')}"><img src="/assets/logo-dark.png" width="32" height="26" alt="logo"></a>
         <a id="mi-home" class="navbar-brand" href="@{xrefHref('reach-top')}">Reach</a>
       </div>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-collapse"><span class="navbar-toggler-icon"></span></button>
+      <div class="navbar-nav ms-lg-2" style="cursor: pointer">
+        @{menuItem(
+          'search',
+          '<i class="fas fa-search fa-lg" id="search-icon"></i>'
+        )}
+      </div>
       <div class="collapse navbar-collapse justify-content-end" id="navbar-collapse">
         <div class="navbar-nav">
           <a class="nav-link follow" href="https://reach.sh/">To Reach.sh</a>
         </div>
-        <div class="navbar-nav ms-lg-2" style="cursor: pointer;">
-          @{menuItem(
-            'search',
-            '<i class="fas fa-search fa-lg" id="search-icon"></i>'
-          )}
-        </div>
         <div class="navbar-nav">
           <a class="nav-link"  id="themeToggler" onclick="toggleTheme()"></a>
         </div>
-
       </div>
     </header>
   </div>
@@ -177,16 +176,6 @@
           <button class="btn btn-outline-dark btn-sm dropdown-toggle" type="button" id="versions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose a version</button>
           <div class="dropdown-menu" aria-labelledby="versions"></div>
         </div> -->
-        <button
-        id="collapse-button"
-        class="mt-1 btn-outline-secondary btn-sm show-book-col"
-        onclick="setItemToBlock(event, 'book-col')"
-      >
-        <img
-          alt="expand left sidebar"
-          src="/assets/icons/Colorway=Dark Mode, State=Hover, Action=Expand.svg"
-        />
-      </button>
         <div id="hh-viewer">
       
         </div>
