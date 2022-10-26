@@ -658,6 +658,7 @@ i.fa-angle-right {
   flex: none;
   order: 0;
   flex-grow: 0;
+  margin: 0 !important;
 }
 
 .banner-text-container {
@@ -684,6 +685,7 @@ i.fa-angle-right {
   flex: none;
   order: 1;
   flex-grow: 0;
+  margin: 0 !important;
 }
 
 #book-col a.book-title,

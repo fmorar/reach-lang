@@ -333,7 +333,7 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
   // Display homepage styles.
   doc.querySelector('div#hh-page-header .col').style.display = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? 'block' : 'none' : 'none';
   doc.querySelector('div#hh-page-header').style.cssText = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '' : 'margin: 0;float:left;border:none' : 'margin: 0;float:left;border:none';
-  doc.querySelector('div.show-book-col').style.cssText = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '' : 'background-color:white' : 'background-color:white';
+  doc.querySelector('div.show-book-col').style.cssText = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '' : 'background-color:white;display:block' : 'background-color:white;display:block';
   doc.querySelector('#page-col').style.padding = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '16px 24px' : '16px 0 0 0' : '16px 0 0 0';
  
   doc.getElementById('page-col').style.display = 'block';
