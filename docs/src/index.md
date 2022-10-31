@@ -1,59 +1,5 @@
 # {#reach-top} Getting Started
 
-<head>
-  <style>
-    #reach-top {
-      font-family: "Reach Favorit";
-      width: 141px;
-      height: 44px;
-      font-style: normal;
-      font-weight: 500;
-      font-size: 40px;
-      line-height: 43px;
-    }
-    .first-row {
-      display: flex;
-      flex-direction: row;
-      flex-wrap: wrap;
-      justify-content: space-around;
-      height: 100%;
-      box-sizing: content-box;
-    }
-    .first-row div {
-      display: flex;
-      flex-direction: column;
-      width: 50%;
-      justify-content: center;
-    }
-    .card-text {
-      color: #d1e3f0;
-      font-weight: 700;
-    }
-    .img-fluid:hover + p {
-      color: #4536da;
-    }
-    .section-container {
-      position: relative;
-    }
-    .banner {
-      position: absolute;
-      top: 0;
-      left: 0;
-    }
-    .arrow {
-      position: absolute;
-      top: 0;
-      right: 0;
-    }
-    .row {
-      justify-content: space-around;
-    }
-    .reverse{
-      display:flex;
-      flex-direction:column-reverse;
-    }
-  </style>
-</head>
 <div class="bg-image">
   <div class="banner-text-container">
     <img src="/assets/img/big-logo.svg" width="197" height="145" alt="logo" />
@@ -319,11 +265,4 @@
   </div>
 </div>
 
-<div class="footer">
-  <div class="container-sm g-3 mb-4">
-    <p class="explore-title-text">
-      Get Reach Updates</span>
-    </p>
-    <p>You will be notified with Reach updates, news and announcements.</p>
-  </div>
-</div>
+<div class="footer"></div>
