@@ -405,10 +405,17 @@ header div.navbar-nav a.active span {
 
 #navbar-toggle {
   background-color: var(--light-mode-white);
+  height: 85px;
 }
 
 .navbar-toggler {
   background-color: var(--light-mode-white-navbar);
+}
+
+.border-link {
+  border-bottom: 1px solid #8F87E8;
+  font-size: 16px;
+  margin: 0;
 }
 
 /************************************************
