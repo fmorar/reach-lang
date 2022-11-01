@@ -59,16 +59,19 @@
       const toggle = document.getElementById("themeToggler");
       const brand = document.querySelector(".navbar-brand");
       const footer=document.querySelector(".footer")
+      const search=document.querySelector(".search-bar .nav-link")
       if (classList.contains("day")) {
         classList.replace("day", "night");
         toggle.innerHTML = `<img src="/assets/img/sun.svg" alt="light mode">`;
         brand.innerHTML= `<img src="/assets/logo-dark.svg" alt="logo">`;
         footer.style.backgroundImage= `url("./assets/img/background-footer-repeat-dark.svg")`
+        search.innerHTML= `<img src="/assets/img/search-dark.svg" id="search-icon" alt="search bar">`;
       } else if (classList.contains("night")) {
         classList.replace("night", "day");
         toggle.innerHTML = `<img src="/assets/img/moon.svg" alt="dark mode">`;
         brand.innerHTML= `<img src="/assets/logo-light.svg" alt="logo">`;
         footer.style.backgroundImage= `url("./assets/img/background-footer-repeat.svg")`
+        search.innerHTML= `<img src="/assets/img/search-light.svg" id="search-icon" alt="search bar">`;
       }
     };
   </script>
@@ -95,10 +98,10 @@
       <div>
         <a class="navbar-brand" href="@{xrefHref('reach-top')}"><img src="/assets/logo-dark.svg" alt="logo"></a>
       </div>
-      <div class="navbar-nav ms-lg-2" style="cursor: pointer">
+      <div class="navbar-nav ms-lg-2 search-bar" style="cursor: pointer">
         @{menuItem(
           'search',
-          '<i class="fas fa-search fa-lg" id="search-icon"></i>'
+          '<img src="/assets/img/search-light.svg" id="search-icon" alt="search bar">'
         )}
       </div>
       <div class="collapse navbar-collapse justify-content-end" id="navbar-collapse">

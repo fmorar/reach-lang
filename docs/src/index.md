@@ -1,5 +1,31 @@
 # {#reach-top} Getting Started
+<script type="module">
+  function waitForElm(selector) {
+  return new Promise((resolve) => {
+    if (document.querySelector(selector)) {
+      return resolve(document.querySelector(selector));
+    }
 
+    const observer = new MutationObserver((mutations) => {
+      if (document.querySelector(selector)) {
+        resolve(document.querySelector(selector));
+        observer.disconnect();
+      }
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+  });
+}
+
+waitForElm(".footer").then((elm) => {
+  const domContainer = document.querySelector(".footer");
+  const root = ReactDOM.createRoot(domContainer);
+  root.render(e(LikeButton));
+});
+</script>
 <div class="bg-image">
   <div class="banner-text-container">
     <img src="/assets/img/big-logo.svg" width="197" height="145" alt="logo" />
@@ -7,7 +33,7 @@
       Reach <span style="font-weight: bold">documentation</span>
     </p>
     <p class="text-logo">
-      The Smartest, Fastest, and Safest DApp Programming Language
+      The <span class="bold">Smartest</span>, <span class="bold">Fastest</span>, and <span class="bold">Safest</span> DApp Programming Language
     </p>
   </div>
 </div>
@@ -16,8 +42,8 @@
     Getting <span class="blue-bg-text">Started</span>
   </p>
   <p>
-    Read an overview of the language or dive straight into the code with
-    tutorials
+    Read an overview of the <span class="bold">language</span> or <span class="bold">dive</span> straight into the <span class="bold">code with
+    tutorials</span>
   </p>
   <div class="row">
     <section class="col-sm-4 p-2">
@@ -36,7 +62,7 @@
       </a>
     </section>
     <section class="col-sm-4 p-2">
-      <a href="/tut/#tuts">
+      <a href="/quickstart/#quickstart">
         <div class="first-row build-connect">
           <img class="banner" src="../assets/img/use.svg" />
           <div class="p-1">
@@ -73,9 +99,9 @@
     <p class="explore-title-text">
       Explore the <span class="white-bg-text">Language</span>
     </p>
-    <p>Get familiar with the language and explore its main concepts.</p>
+    <p>Get familiar with the <span class="bold">language</span> and explore its <span class="bold">main concepts</span>.</p>
     <div class="roadmap-top-text-container">
-      <p class="roadmap-top-text">Here's your roadmap, follow the path!</p>
+      <p class="roadmap-top-text">Here's your roadmap, <span class="bold">follow the path!</span></p>
     </div>
     <div class="row">
       <section class="col-sm-2 p-2 reverse">
@@ -215,7 +241,7 @@
   </p>
   <div class="row">
     <section class="col-sm-4 p-2">
-      <a href="/tut/#tuts">
+      <a href="https://discord.com/invite/AZsgcXu">
         <div class="first-row social-hover">
           <img class="banner" src="../assets/img/social.svg" />
           <svg xmlns="http://www.w3.org/2000/svg" class="img-fluid p-1 arrow" width="65" height="65" viewBox="0 0 65 65" fill="none"><path d="M21.4025 21.9783L21.4025 25.7506L36.3443 25.7639L20.0649 42.0434L22.7402 44.7187L39.0196 28.4393L39.033 43.381L42.8052 43.381L42.8052 21.9783L21.4025 21.9783Z" fill="currentColor"/></svg>
@@ -231,7 +257,7 @@
       </a>
     </section>
     <section class="col-sm-4 p-2">
-      <a href="/tut/#tuts">
+      <a href="https://github.com/reach-sh/reach-lang/discussions">
         <div class="first-row social-hover">
           <img class="banner" src="../assets/img/social.svg" />
           <svg xmlns="http://www.w3.org/2000/svg" class="img-fluid p-1 arrow" width="65" height="65" viewBox="0 0 65 65" fill="none"><path d="M21.4025 21.9783L21.4025 25.7506L36.3443 25.7639L20.0649 42.0434L22.7402 44.7187L39.0196 28.4393L39.033 43.381L42.8052 43.381L42.8052 21.9783L21.4025 21.9783Z" fill="currentColor"/></svg>
@@ -247,10 +273,10 @@
       </a>
     </section>
     <section class="col-sm-4 p-2">
-      <a href="/tut/#tuts">
+      <a href="https://github.com/reach-sh/reach-lang">
         <div class="first-row contribute-hover">
           <img class="banner" src="../assets/img/use-white.svg" />
-          <svg xmlns="http://www.w3.org/2000/svg" class="img-fluid p-1 arrow" width="65" height="65" viewBox="0 0 65 65" fill="none"><path d="M21.4025 21.9783L21.4025 25.7506L36.3443 25.7639L20.0649 42.0434L22.7402 44.7187L39.0196 28.4393L39.033 43.381L42.8052 43.381L42.8052 21.9783L21.4025 21.9783Z" fill="currentColor"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" class="img-fluid p-1 arrow" width="18" height="17" viewBox="0 0 18 17" fill="none"><path d="M1.63241 0.297037L1.63241 3.05218L12.5455 3.06195L0.655407 14.952L2.60941 16.906L14.4995 5.01595L14.5093 15.929L17.2644 15.929L17.2644 0.297036L1.63241 0.297037Z" fill="currentColor"/></svg>
           <svg xmlns="http://www.w3.org/2000/svg" class="img-fluid p-1" width="97" height="97" viewBox="0 0 97 97" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M48.3148 6.3357C38.0587 6.33965 28.1386 9.99254 20.3291 16.6409C12.5197 23.2892 7.33042 32.4992 5.68972 42.6233C4.04903 52.7473 6.06393 63.1248 11.374 71.8993C16.684 80.6737 24.9427 87.2727 34.6727 90.5156C36.8335 90.9096 37.6215 89.5737 37.6215 88.4348C37.6215 87.4067 37.5846 84.0023 37.5661 80.3948C25.5369 83.005 22.9759 75.2851 22.9759 75.2851C21.0121 70.2925 18.1802 68.9627 18.1802 68.9627C14.2587 66.2848 18.4757 66.3402 18.4757 66.3402C22.8158 66.6418 25.0998 70.7911 25.0998 70.7911C28.9474 77.3905 35.2021 75.4821 37.6646 74.3802C38.0524 71.5914 39.1729 69.683 40.4103 68.6057C30.8127 67.516 20.7104 63.81 20.7104 47.2621C20.6507 42.9681 22.2443 38.8155 25.1614 35.6638C24.712 34.5803 23.2345 30.1848 25.58 24.2379C25.58 24.2379 29.206 23.0744 37.4614 28.6642C44.5423 26.727 52.0135 26.727 59.0943 28.6642C67.3806 23.0867 70.9943 24.2502 70.9943 24.2502C73.3459 30.1971 71.8684 34.5927 71.419 35.6761C74.3371 38.8267 75.929 42.9806 75.8638 47.2744C75.8638 63.8592 65.7615 67.516 56.164 68.581C57.7153 69.9231 59.0943 72.5518 59.0943 76.5841C59.0943 82.3586 59.0451 87.0127 59.0451 88.4348C59.0451 89.586 59.8208 90.9342 62.0124 90.5094C71.7423 87.2617 79.999 80.6576 85.3049 71.8789C90.6109 63.1002 92.6199 52.7199 90.9723 42.5954C89.3248 32.471 84.1283 23.2632 76.3127 16.6198C68.497 9.97634 58.5724 6.33087 48.3148 6.3357Z" fill="currentColor"/></svg>
           <div class="p-1">
             <p class="use-sm" class="card-text mt-2">Contribute</p>
@@ -266,3 +292,4 @@
 </div>
 
 <div class="footer"></div>
+

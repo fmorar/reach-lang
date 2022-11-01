@@ -43,6 +43,10 @@ main {
   margin: 0 !important;
 }
 
+.bold{
+  font-weight: bold;
+}
+
 /************************************************
  responsive
 ************************************************/
@@ -405,7 +409,7 @@ header div.navbar-nav a.active span {
 
 #navbar-toggle {
   background-color: var(--light-mode-white);
-  height: 85px;
+  height: 5rem;
 }
 
 .navbar-toggler {
@@ -743,6 +747,12 @@ i.fa-angle-right {
   float: left;
 }
 
+.collapse{
+  background-color: var(--light-mode-white);
+  z-index: 5;
+  width: 100%;
+}
+
 .title-background {
   font-family: "Reach Favorit";
   font-style: normal;
@@ -989,6 +999,7 @@ i.fas:hover {
 
 .noscroll {
   -ms-overflow-style: none;
+  overflow: hidden;
   scrollbar-width: none;
 }
 
