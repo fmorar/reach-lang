@@ -761,7 +761,7 @@ const processMd = async ({baseConfig, relDir, in_folder, iPath, oPath}) => {
       chEl.appendChild(mkEl(`&nbsp;`));
     }
     const cpEl = doc.createElement('a');
-    cpEl.classList.add("far", "fa-copy", "copyBtn");
+    cpEl.classList.add("far", "fa-solid", "fa-copy", "copyBtn");
     const copyCode = ( spec.language === 'cmd' ) ?
       rawCode.replace(/^\$ /, '') : rawCode;
     cpEl.setAttribute("data-clipboard-text",
@@ -851,7 +851,7 @@ const generateBook = async (destp, bookp) => {
       d.children.push(h('div', {class: "col-auto chapter-empty-col"}));
     } else {
       d.children.push(h('div', {class: "col-auto chapter-icon-col"}, [
-        h('i', {class: "chapter-icon fas fa-angle-right"})
+        h('i', {class: "chapter-icon fas fa-solid fa-diamond closed"})
       ]));
       cs.push(h('div', {class: "pages", style: "display:none"},
         hifyList(ctc)

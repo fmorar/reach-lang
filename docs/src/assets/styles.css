@@ -179,8 +179,9 @@ main {
   --footer: #ffffff;
   --book-col: #ffffff;
   --list-background: #eef7fc;
+  --link-internal: #4536da;
 
-  --shiki-color-text: #ffffff;
+  --shiki-color-text: #24292e;
   --shiki-color-background: var(--snippet);
   --shiki-token-constant: #005cc5;
   --shiki-token-string: #770000;
@@ -248,8 +249,9 @@ main {
     --footer: #2b2b2b;
     --book-col: #1e1e1e;
     --list-background: #702424;
+    --link-internal: #ffffff;
 
-    --shiki-color-text: #ffffff;
+    --shiki-color-text: #d0d0d0;
     --shiki-color-background: var(--snippet);
     --shiki-token-constant: #508cc5;
     --shiki-token-string: #770000;
@@ -315,8 +317,9 @@ main {
   --footer: #2b2b2b;
   --book-col: #1e1e1e;
   --list-background: #702424;
+  --link-internal: #ffffff;
 
-  --shiki-color-text: #ffffff;
+  --shiki-color-text: #d0d0d0;
   --shiki-color-background: var(--snippet);
   --shiki-token-constant: #508cc5;
   --shiki-token-string: #770000;
@@ -852,7 +855,7 @@ i.fa-angle-right {
 }
 
 #book-col div.chapter-icon-col {
-  padding-top: 3px;
+  padding-top: 2px;
   padding-right: 8px;
 }
 
@@ -913,8 +916,9 @@ i.fas:hover {
 }
 
 #page-col div#hh-viewer-wrapper span.title {
-  font-weight: normal;
-  font-size: 22px;
+  font-weight: 700;
+  font-size: 44px;
+  line-height: 50px;
 }
 
 #page-col div#hh-viewer-wrapper div.metadata {
@@ -930,8 +934,8 @@ i.fas:hover {
 }
 
 #page-col div#hh-viewer h1 {
-  font-weight: normal;
-  font-size: 22px;
+  font-weight: 700;
+  font-size: 30px;
 }
 
 #page-col div#hh-viewer h1:after {
@@ -943,7 +947,9 @@ i.fas:hover {
 #page-col div#hh-viewer h2 {
   color: var(--light-mode-black);
   font-weight: bold;
-  font-size: 18px;
+  font-size: 20px;
+  border-bottom: 1px solid var(--soft1);
+  line-height: 2rem;
 }
 
 #page-col div#hh-viewer h3 {
@@ -994,6 +1000,19 @@ i.fas:hover {
 #page-col div#hh-viewer ul:not(.nav) li {
   background-color: var(--list-background);
   padding: 0.5rem;
+}
+
+#page-col div#hh-viewer #qs-win-prereqs + ul {
+  list-style-type: disc;
+  background-color: transparent;
+}
+
+#page-col div#hh-viewer #qs-win-prereqs + ul li {
+  background-color: transparent;
+}
+
+#page-col div#hh-viewer #qs-win-prereqs + ul li p {
+  margin: 0;
 }
 
 #page-col img.hh-shadow {
@@ -1172,6 +1191,8 @@ iframe.gray-scale {
 #page-col pre {
   border-radius: 5px;
   border: 2px solid #4536DA;
+  padding: 0 0.5rem;
+  background-color: var(--snippet);
 }
 
 #page-col .unnumbered {
@@ -1186,7 +1207,9 @@ iframe.gray-scale {
   order: 1;
   color: #ffffff;
   background-color: var(--snippet);
-  border-bottom: 1px solid var(--snippet-border);
+  border-bottom: 1px solid #ffffff;
+  font-size: 24px;
+  align-items: baseline;
 }
 
 #page-col .unnumbered div.codeHeader {
@@ -1194,17 +1217,20 @@ iframe.gray-scale {
   background-color: var(--snippet);
   border-bottom: 1px solid var(--snippet-border);
   display: flex;
-  align-items: center;
+  align-items: baseline;
 }
 
 #page-col pre.snippet div.codeHeader a.copyBtn {
+  font-size: 24px;
   float: right;
   margin-right: 0.2em;
   margin-top: 0.2em;
+  color: #9C97D9;;
 }
 
 #page-col div#hh-viewer ol.snippet {
   background-color: var(--snippet);
+  font-size: 16px;
   /* github-light modified*/
   overflow-y: scroll;
   scrollbar-width: none;
@@ -1212,6 +1238,10 @@ iframe.gray-scale {
   -ms-overflow-style: none;
   /* Internet Explorer 10+ */
   margin-bottom: 0;
+}
+
+#page-col div#hh-viewer ol.snippet li span {
+  color: #ffffff !important;
 }
 
 #page-col div#hh-viewer pre:not(.snippet) {
@@ -1244,6 +1274,7 @@ iframe.gray-scale {
   font-size: 95%;
   padding: 1px 12px;
   white-space: pre;
+  margin: 0;
 }
 
 #page-col div#hh-viewer pre:not(.snippet) code {
@@ -1259,13 +1290,21 @@ iframe.gray-scale {
   padding-bottom: 6px;
 }
 
-#page-col div#hh-viewer pre.numbered ol.snippet li::marker {
-  color: var(--shiki-color-text);
-  content: attr(value) " ";
+#page-col div#hh-viewer pre.numbered .snippet li{
+  counter-increment: counterName;
+  position: relative;
+}
+
+#page-col div#hh-viewer pre.numbered .snippet li::before {
+  position: absolute;
+  left: -10px;
+  content: counter(counterName);
+  color: #ffffff;
 }
 
 #page-col div#hh-viewer pre.numbered ol {
   padding-left: 3rem;
+  counter-reset: counterName;
 }
 
 #page-col div#hh-viewer pre.numbered ol li {

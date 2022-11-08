@@ -15,9 +15,7 @@ Reach requires [WSL 2](https://docs.microsoft.com/en-us/windows/wsl/install) and
 
 ## {#qs-win-prereqs} Prerequisites
 
-* Windows 10 installed with version 2004 or higher,
-
-or
+* Windows 10 installed with version 2004 or higher.
 
 * Windows 11
 

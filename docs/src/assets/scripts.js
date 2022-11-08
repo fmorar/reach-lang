@@ -178,13 +178,13 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
       el.addEventListener('click', (evt) => {
         const item = evt.target;
         const pages = item.closest('div.chapter').querySelector('div.pages');
-        if (item.classList.contains('fa-angle-right')) {
-          item.classList.remove('fa-angle-right');
-          item.classList.add('fa-angle-down');
+        if (item.classList.contains('closed')) {
+          item.classList.remove('closed');
+          item.classList.add('opened');
           pages.style.display = 'block';
         } else {
-          item.classList.remove('fa-angle-down');
-          item.classList.add('fa-angle-right');
+          item.classList.remove('opened');
+          item.classList.add('closed');
           pages.style.display = 'none';
         }
       });
@@ -312,8 +312,6 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
     const pages = chapter && chapter.querySelector('div.pages');
     if (pages && pages.hasChildNodes()) {
       const icon = chapter.querySelector('i.chapter-icon');
-      icon.classList.remove('fa-angle-right');
-      icon.classList.add('fa-angle-down');
       pages.style.display = 'block';
     }
   }
