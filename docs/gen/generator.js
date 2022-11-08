@@ -774,10 +774,15 @@ const processMd = async ({baseConfig, relDir, in_folder, iPath, oPath}) => {
     cpEl.setAttribute('title', 'Copy to clipboard');
 
     chEl.appendChild(cpEl);
-    pre.append(chEl);
-    pre.append(mkEl(olStr));
-    pre.classList.add('snippet');
     const shouldNumber = spec.numbered && hasSome;
+    if (shouldNumber){
+      pre.append(chEl);
+      pre.append(mkEl(olStr));
+    } else {
+      pre.append(mkEl(olStr));
+      pre.append(chEl);
+    }
+    pre.classList.add('snippet');
     pre.classList.add(shouldNumber ? 'numbered' : 'unnumbered');
     linkifySpans(pre, spec.language);
   }

@@ -12,6 +12,10 @@ const LikeButton = () => {
           <p>
             You will be notified with Reach updates, news and announcements.
           </p>
+          <div class="buttonIn">
+        <input type="email" id="enter"/>
+        <button id="clear">SIGN UP</button>
+          </div>
         </section>
         <section className="col-sm-2 p-2">
           <div className="first-row-footer">

@@ -1,3 +1,24 @@
+:root,
+:root.day {
+  --footer-input: #FFFFFF;
+  --footer-border: #333333;
+}
+
+/* Must match :root.night */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --footer-input: #333333;
+    --footer-border: #FFFFFF;
+  }
+}
+
+/* Must match @media (prefers-color-scheme: dark) */
+:root.night {
+  --footer-input: #333333;
+  --footer-border: #FFFFFF;
+}
+
+
 .star-rating {
     display: flex;
     flex-wrap: wrap;
@@ -46,3 +67,34 @@
     width: 80%;
     margin: 1rem;
   }
+
+  .buttonIn {
+    width: 300px;
+    position: relative;
+    margin: 1rem;
+}
+ 
+.buttonIn > input {
+    margin: 0px;
+    padding: 0 5rem 0 1rem;
+    width: 100%;
+    outline: none;
+    height: 35px;
+    border-radius: 8px;
+    background-color: var(--footer-input);
+    border: 1px solid var(--footer-border)
+}
+ 
+.buttonIn > button {
+    position: absolute;
+    top: 0;
+    right: 6px;
+    z-index: 2;
+    border-left: 1px solid var(--footer-border) !important;
+    top: 2px;
+    height: 30px;
+    cursor: pointer;
+    color: var(--footer-border);
+    background-color: var(--footer-input);
+    transform: translateX(2px);
+}
