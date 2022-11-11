@@ -53,8 +53,23 @@
       localStorage.setItem(item, "none");
     };
 
+    const setSearchDisplay= (_event, display ) => {
+      const searchModal= document.querySelector(".search-modal")
+      const overlay= document.querySelector(".overlay")
+      let hideSearch = () => {
+        searchModal.style.display="none"
+        overlay.style.display="none"
+        overlay.removeEventListener("click", hideSearch);
+      }
+      overlay.addEventListener("click", hideSearch, false)
+      searchModal.style.display=display
+      overlay.style.display=display
+    };
+ 
+
     // https://stackoverflow.com/a/68824350
     const toggleTheme = () => {
+      console.log("hello")
       const { classList } = document.documentElement;
       const toggle = document.getElementById("themeToggler");
       const brand = document.querySelector(".navbar-brand");
@@ -84,10 +99,8 @@
   <link rel="stylesheet" type="text/css" href="/assets/styles.css?v=57">
   <link rel="stylesheet" type="text/css" href="/components/styles.css?v=57">
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- Cargar React. -->
-  <!-- Nota: cuando se despliegue, reemplazar "development.js" con "production.min.js". -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>  
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>  
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 </head>
 
 <body class="container-fluid noscroll">
@@ -99,10 +112,9 @@
         <a class="navbar-brand" href="@{xrefHref('reach-top')}"><img src="/assets/logo-dark.svg" alt="logo"></a>
       </div>
       <div class="navbar-nav ms-lg-2 search-bar" style="cursor: pointer">
-        @{menuItem(
-          'search',
-          '<img src="/assets/img/search-light.svg" id="search-icon" alt="search bar">'
-        )}
+        <a class="nav-link" onclick="setSearchDisplay(event, 'block')">
+          <img src="/assets/img/search-light.svg" id="search-icon" alt="search bar">
+        </a>
       </div>
       <div class="collapse navbar-collapse justify-content-end" id="navbar-collapse">
         <div class="navbar-nav">
@@ -197,7 +209,7 @@
     <!--END PAGE COLUMN-->
 
     <!--OTP COLUMN-->
-    <div id="otp-col" class="col display" style="display:none;">
+    <div id="otp-col" class="col display" style="display:block;">
       <section class="p-2">
         <a href="https://discord.com/invite/AZsgcXu">
           <div class="first-row social-hover">
@@ -234,6 +246,8 @@
       </ul>
     </div>
     <!--END OTP COLUMN-->
+    <div class="overlay" style="display:none;"></div>
+    <div class="search-modal" style="display:none;"></div>
 
   </main>
   <script src="https://cdn.jsdelivr.net/npm/axios@0.24.0/dist/axios.min.js"></script>
@@ -244,6 +258,7 @@
   <script src="/assets/scripts.js?v=61" type="module"></script>
   <!-- Cargamos nuestro componente de React. -->
   <script type="text/babel" src="/components/Footer.jsx"></script>
+  <script type="text/babel" src="/components/Search.jsx"></script>
 </body>
 
 </html>

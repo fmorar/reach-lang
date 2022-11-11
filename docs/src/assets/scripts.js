@@ -43,9 +43,15 @@ const maxColWidth = '280px';
 let winWidth = getWinWidthStr();
 
 const establishDisplay = () => {
+  const search= document.querySelector(".navbar-nav .nav-link")
   const { bookPath, hasOtp } = currentPage;
   establishDisplayFor('book-col', 'div.show-book-col', bookPath);
   establishDisplayFor('otp-col', 'button.show-otp-col', hasOtp);
+  if (winWidth == 'sm' || winWidth == 'xs') {
+    search.innerHTML= `<i class="fas fa-search fa-lg" id="search-icon"></i>`
+  } else {
+    search.innerHTML= `<img src="/assets/img/search-light.svg" id="search-icon" alt="search bar">`
+  }
 };
 
 const establishDisplayFor = (id, selector, property) => {
@@ -67,6 +73,9 @@ const establishDisplayFor = (id, selector, property) => {
   const prev = localStorage.getItem(id);
   switch (prev) {
     case 'block':
+      if (winWidth == 'sm' || winWidth == 'xs'){
+        doc.querySelector('.overlay').style.display = "block";
+      }
       element.style.display = 'block';
       button.style.display = 'none';
       break;
@@ -164,7 +173,14 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
     insertAfter(bookHtml, document.getElementById("toggle-icon"));
 
     doc.querySelectorAll("#book-col .chapter-title").forEach((item,index)=>{
-
+      if (winWidth == 'sm' || winWidth == 'xs'){
+        item.addEventListener("click", ()=>{
+         
+          doc.querySelector('.overlay').style.display = "none";
+          doc.querySelector('#book-col').style.display = "none";
+        }, false)
+      }
+      
       if (index >= 25 && index <= 27){
         if(index === 25){
           item.parentNode.classList.add('first-bottom-chapter')
@@ -319,14 +335,6 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
   // Establish correct display values.
   establishDisplay();
 
-  // Display book.
-  if (currentPage.bookPath != undefined) {
-    doc.getElementById('book-col').classList.remove('banish');
-    doc.querySelector('div.show-book-col').classList.remove('banish');
-  } else {
-    doc.getElementById('book-col').classList.add('banish');
-    doc.querySelector('div.show-book-col').classList.add('banish');
-  }
 
   // Display homepage styles.
   doc.querySelector('div#hh-page-header .col').style.display = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? 'block' : 'none' : 'none';
@@ -398,12 +406,15 @@ window.onpopstate = function (event) {
 
 const makeShowHide = (hideQ, showQ, showId) => {
   const f = (isHide) => {
+    const j = (isHide) => isHide ? 'none' : 'block';
     const g = (b) => b ? 'block' : 'none';
-    const x = g(isHide); const y = g(! isHide);
+    const x = g(isHide); 
+    const y = g(! isHide);
+    const z = j(isHide);
     const q = isHide ? hideQ : showQ;
     doc.querySelector(q).addEventListener('click', (event) => {
       if (winWidth == 'sm' || winWidth == 'xs') {
-        doc.getElementById('page-col').style.display = x;
+        doc.querySelector('.overlay').style.display = z;
       }
       console.log(showId,y)
       console.log(showQ, x)
