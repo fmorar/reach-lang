@@ -181,8 +181,8 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
         }, false)
       }
       
-      if (index >= 25 && index <= 27){
-        if(index === 25){
+      if (index >= 24 && index <= 27){
+        if(index === 24){
           item.parentNode.classList.add('first-bottom-chapter')
         }
         item.classList.add('bottom-chapter');
