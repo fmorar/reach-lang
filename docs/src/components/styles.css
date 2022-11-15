@@ -2,6 +2,9 @@
 :root.day {
   --footer-input: #FFFFFF;
   --footer-border: #333333;
+  --result-item:#FFFFFF;
+  --result-item-text: #333333;
+  --search-title: #4536DA;
 }
 
 /* Must match :root.night */
@@ -9,6 +12,9 @@
   :root {
     --footer-input: #333333;
     --footer-border: #FFFFFF;
+    --result-item: #666666;
+    --result-item-text: #333333;
+    --search-title: #FFFFFF;
   }
 }
 
@@ -16,6 +22,9 @@
 :root.night {
   --footer-input: #333333;
   --footer-border: #FFFFFF;
+  --result-item: #666666;
+  --result-item-text: #FFFFFF;
+  --search-title: #FFFFFF;
 }
 
 
@@ -98,3 +107,89 @@
     background-color: var(--footer-input);
     transform: translateX(2px);
 }
+
+.results-container{
+  margin: 1rem 0
+}
+
+.results-list{
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+}
+
+.search-title{
+  color: var(--search-title);
+  font-family: 'Reach Favorit';
+  font-style: normal;
+  font-weight: 300;
+  font-size: 16px;
+  line-height: 167%;
+  margin: 0;
+}
+
+.result-item{
+  border: none;
+  color: var(--result-item-text);
+  background-color: var(--result-item);
+  text-decoration: none;
+  margin-bottom: 1rem;
+  padding: 10px 10px 10px 20px;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.result-item p{
+ margin: 0;
+}
+
+.result-item div svg{
+  color: var(--result-item);
+ }
+
+.result-item:hover{
+  border: none;
+  color: #FFFFFF;
+  background-color: #6B5EE0;
+}
+
+.result-item:hover div svg{
+  color: #FFFFFF;
+}
+
+.search-arrow{
+  margin: 0 1rem;
+}
+
+#reach-search-input{
+  border: none;
+  outline: none;
+}
+
+#reach-search-input:focus{
+  border: none;
+  box-shadow: none;
+}
+
+.input-group{
+  justify-content: center;
+  align-items: center;
+  padding: 0px 16.8649px;
+gap: 11.24px;
+
+
+/* Primary/Main/Reach White */
+background: #FFFFFF;
+
+/* Primary/Grey/Reach Grey 700 */
+border: 1.40541px solid #666666;
+border-radius: 10px;
+}
+
+.input-group:focus-within{
+  box-shadow: 0 0 0 0.25rem rgb(13 110 253 / 25%);
+}
+

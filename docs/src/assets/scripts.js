@@ -232,8 +232,11 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
   tspan.appendChild(hlink);
   tspan.className += " refHeader"
 
+  function groupBy(xs, f) {
+    return xs.reduce((r, v, i, a, k = f(v)) => ((r[k] || (r[k] = [])).push(v), r), {});
+}
   // If search page.
-  const searchInput = doc.getElementById('search-input');
+  const searchInput = doc.getElementById('reach-search-input');
   const { href } = window.location;
   const rawSearchQuery = href.split('search/#search')[1];
   const searchParams = new URLSearchParams(rawSearchQuery);
@@ -244,43 +247,61 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
     const searchResultsList = doc.getElementById('search-results-list');
     const search = async (_evt) => {
       const { hits } = await searchIndex.search(searchInput.value);
+      const groupedHits= groupBy(hits, (c) => c.pt)
       if ( ! hits.length ) { return; }
       searchResultsList.innerHTML = '';
-      hits.forEach((hit) => {
-        const sdClasses = [
-          'sdRef',
-          'sdTerm',
-          'sdHeader',
-          'sdPara',
-          'sdGHDis',
-        ];
-        const c = sdClasses[hit.t];
-        const e = doc.createElement('li');
-        e.classList.add(c);
-        const h = (cls, t) => {
-          const n = doc.createElement('span');
-          n.classList.add(cls);
-          n.innerText = t;
-          e.appendChild(n);
-        };
-        const a = doc.createElement('a');
-        a.classList.add('pt');
-        a.href = hit.objectID;
-        a.innerText = hit.pt;
-        e.appendChild(a);
-        if ( c === 'sdRef' ) {
-          h('symbol', hit.c);
-          h('scope', hit.s);
-        } else if ( c === 'sdTerm' ) {
-          h('term', hit.c);
-        } else if ( c === 'sdHeader' ) {
-          h('h', hit.c);
-        } else if ( c === 'sdPara' ) {
-          h('p', hit.c);
-        } else if ( c === 'sdGHDis' ) {
-          h('p', hit.c);
-        }
-        searchResultsList.append(e);
+      Object.entries(groupedHits).forEach(([key, value]) => {
+        const p = doc.createElement('p');
+        const d = doc.createElement('div');
+        p.innerHTML = key
+        p.classList.add("search-title");
+        d.classList.add("results-list");
+        searchResultsList.append(p);
+        searchResultsList.append(d);
+        value.forEach((hit)=>{
+          const sdClasses = [
+            'sdRef',
+            'sdTerm',
+            'sdHeader',
+            'sdPara',
+            'sdGHDis',
+          ];
+          const c = sdClasses[hit.t];
+          const e = doc.createElement('div');
+          const f = doc.createElement('div');
+          e.classList.add(c, "result-item");
+          const h = (cls, t) => {
+            const n = doc.createElement('span');
+            n.classList.add(cls);
+            n.innerText = t;
+            f.appendChild(n);
+          };
+          const a = doc.createElement('a');
+          a.classList.add('pt');
+          a.href = hit.objectID;
+          if ( c === 'sdRef' ) {
+            h('symbol', hit.c);
+            h('scope', hit.s);
+          } else if ( c === 'sdTerm' ) {
+            h('term', hit.c);
+          } else if ( c === 'sdHeader' ) {
+            h('h', hit.c);
+          } else if ( c === 'sdPara' ) {
+            h('p', hit.c);
+          } else if ( c === 'sdGHDis' ) {
+            h('p', hit.c);
+          }
+          e.appendChild(f)
+          e.innerHTML +=`
+          <div className="search-arrow">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="15" viewBox="0 0 18 15" fill="none">
+              <path d="M7 4V0L0 7L7 14V9.9C12 9.9 15.5 11.5 18 15C17 10 14 5 7 4Z" fill="currentColor" />
+            </svg>
+          </div>
+          `
+          a.appendChild(e)
+          searchResultsList.append(a);
+        })
       });
       updateHistory(`search?q=${searchInput.value}`);
       setClickFollowLink();

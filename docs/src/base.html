@@ -56,14 +56,23 @@
     const setSearchDisplay= (_event, display ) => {
       const searchModal= document.querySelector(".search-modal")
       const overlay= document.querySelector(".overlay")
+      const bookCol= document.getElementById("book-col")
+      const otpCol = document.getElementById("otp-col")
       let hideSearch = () => {
         searchModal.style.display="none"
-        overlay.style.display="none"
         overlay.removeEventListener("click", hideSearch);
+        if((bookCol.style.display==="block" || otpCol.style.display==="block") && window.innerWidth <= 576){
+        overlay.style.zIndex = 2
+        } else {
+          overlay.style.display="none"
+        }
       }
       overlay.addEventListener("click", hideSearch, false)
       searchModal.style.display=display
       overlay.style.display=display
+      if((bookCol.style.display==="block" || otpCol.style.display==="block") && window.innerWidth <= 576){
+        overlay.style.zIndex = 3
+      }
     };
  
 
@@ -209,7 +218,7 @@
     <!--END PAGE COLUMN-->
 
     <!--OTP COLUMN-->
-    <div id="otp-col" class="col display" style="display:block;">
+    <div id="otp-col" class="col display" style="display:none;">
       <section class="p-2">
         <a href="https://discord.com/invite/AZsgcXu">
           <div class="first-row social-hover">
