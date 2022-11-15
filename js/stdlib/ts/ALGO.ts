@@ -76,6 +76,7 @@ import {
   SecretKey,
   Mnemonic,
   mkGetEventTys,
+  mShowFundFromFaucetWarning,
 } from './shared_impl';
 import {
   bigNumberify,
@@ -182,7 +183,7 @@ export interface ProviderEnv {
 const defaultALGO_TOKEN_HEADER = 'X-Algo-API-Token';
 const defaultALGO_INDEXER_TOKEN_HEADER = 'X-Indexer-API-Token';
 
-const reachBackendVersion = 25;
+const reachBackendVersion = 26;
 const reachAlgoBackendVersion = 11;
 export type Backend = IBackend<AnyALGO_Ty> & {_Connectors: {ALGO: {
   version: number,
@@ -1767,9 +1768,8 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
           getOutput: (async <X extends CBR_Val>(o_mode:string, o_lab:string, o_ctc:ALGO_Ty<X>, o_val:X): Promise<X> => {
             void(o_mode);
             void(o_lab);
-            // When user doesn't provide remote().ALGO({ simReturnVal: ... }), it gets turned
-            // into undefined. Turn it back into a sensible default value.
-            return o_val !== undefined ? o_val : o_ctc.defaultValue;
+            void(o_ctc);
+            return o_val;
           }),
         };
         const sim_r = await sim_p( fake_res );
@@ -2193,9 +2193,11 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
         },
       };
       const getView1 = (vs:BackendViewsInfo, v:string, k:string|undefined, vim: BackendViewInfo, isSafe = true) =>
-        async (...args: any[]): Promise<any> => {
-          debug('getView1', v, k, args);
-          const { decode } = vim;
+        async (...gargs: any[]): Promise<any> => {
+          debug('getView1', v, k, gargs);
+          const { dom, decode } = vim;
+          const cArgs = gargs.map((arg, i) => dom[i].canonicalize(arg));
+          debug('getView1', 'cArgs', cArgs);
           const ch = await getC();
           try {
             const step = await getCurrentStep_(ch);
@@ -2203,7 +2205,7 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
             const vtys = vs[vi];
             if (!vtys) { throw Error(`no views for state ${step}`); }
             const vvs = (await getState_(getC, _ => vtys))[1];
-            const vres = await decode(vi, vvs, args);
+            const vres = await decode(vi, vvs, cArgs);
             debug({ vres });
             return isSafe ? ['Some', vres] : vres;
           } catch (e) {
@@ -2489,9 +2491,7 @@ const canFundFromFaucet = async (): Promise<boolean> => {
 };
 
 const fundFromFaucet = async (acc: Account | Address, value: unknown) => {
-  if (! hideWarnings()){
-    console.error("Warning: your program uses stdlib.fundFromFaucet. That means it only works on Reach devnets!");
-  }
+  mShowFundFromFaucetWarning();
   const faucet = await getFaucet();
   debug('fundFromFaucet');
   const tag = Math.round(Math.random() * (2 ** 32));

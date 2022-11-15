@@ -239,6 +239,9 @@ instance CollectsTypes a => CollectsTypes (DLinExportBlock a) where
 instance CollectsTypes Int where
   cts _ = mempty
 
+instance CollectsTypes DLView where
+  cts (DLView {..}) = cts dvw_it
+
 instance CollectsTypes LLProg where
   cts (LLProg _ _ llp_parts llp_init llp_exports llp_views llp_apis llp_aliases llp_events llp_step) =
     cts llp_parts <> cts llp_init <> cts llp_exports <> cts llp_views <> cts llp_apis
@@ -268,7 +271,7 @@ instance CollectsTypes DLVarCat where
 
 instance CollectsTypes CHandler where
   cts (C_Handler _ int fs _ svs msg timev secsv body) = cts int <> cts fs <> cts svs <> cts msg <> cts timev <> cts secsv <> cts body
-  cts (C_Loop _ svs vars body) = cts svs <> cts vars <> cts body
+  cts (C_Loop {..}) = cts cl_svs <> cts cl_vars <> cts cl_body
 
 instance CollectsTypes CHandlers where
   cts (CHandlers m) = cts m

@@ -213,12 +213,9 @@ data DLInit = DLInit
   deriving (Eq, Generic)
 
 instance Pretty DLInit where
-  pretty (DLInit {..}) =
-    "// maps" <> hardline
-      <> render_obj dli_maps
-      <> hardline
-      <> "// initialization"
-      <> hardline
+  pretty (DLInit {..}) = render_obj $ M.fromList
+    [ ("maps" :: String, render_obj dli_maps)
+    ]
 
 data DLConstant
   = DLC_UInt_max
@@ -1252,6 +1249,12 @@ varLetType = varType . varLetVar
 v2vl :: DLVar -> DLVarLet
 v2vl = DLVarLet (Just DVC_Many)
 
+vl2lv :: DLVarLet -> DLLetVar
+vl2lv (DLVarLet mvc v) =
+  case mvc of
+    Nothing -> DLV_Eff
+    Just vc -> DLV_Let vc v
+
 type SwitchCases a = M.Map SLVar (DLVar, Bool, a)
 
 instance IsPure a => IsPure (SwitchCases a) where
@@ -1504,20 +1507,49 @@ allFluidVars =
 class HasCounter a where
   getCounter :: a -> Counter
 
+allocVarIdx :: HasCounter e => ReaderT e IO Int
+allocVarIdx = do
+  c <- asks getCounter
+  liftIO $ incCounter c
+
+allocVar_ :: Counter -> SrcLoc -> DLType -> IO DLVar
+allocVar_ c at t =
+  DLVar at Nothing t <$> incCounter c
+
+allocVar :: HasCounter e => SrcLoc -> DLType -> ReaderT e IO DLVar
+allocVar at t = DLVar at Nothing t <$> allocVarIdx
+
+freshenVar :: HasCounter e => DLVar -> ReaderT e IO DLVar
+freshenVar (DLVar at s t _) =
+  DLVar at s t <$> allocVarIdx
+
 class HasUntrustworthyMaps a where
   getUntrustworthyMaps :: a -> Bool
 
 type InterfaceLikeMap a = M.Map (Maybe SLPart) (M.Map SLVar a)
 
-flattenInterfaceLikeMap :: forall a . InterfaceLikeMap a -> M.Map SLPart a
-flattenInterfaceLikeMap = M.fromList . concatMap go . M.toList
+flattenInterfaceLikeMap_ :: forall a b . (SLPart -> a -> b) -> InterfaceLikeMap a -> M.Map SLPart b
+flattenInterfaceLikeMap_ f = M.fromList . concatMap go . M.toList
   where
-    go :: (Maybe SLPart, (M.Map SLVar a)) -> [(SLPart, a)]
+    go :: (Maybe SLPart, (M.Map SLVar a)) -> [(SLPart, b)]
     go (mp, m) = map (go' mp) $ M.toList m
-    go' :: Maybe SLPart -> (SLVar, a) -> (SLPart, a)
-    go' mp (v, x) = (fromMaybe "" (fmap (flip (<>) "_") mp) <> bpack v, x)
+    go' :: Maybe SLPart -> (SLVar, a) -> (SLPart, b)
+    go' mp (v, x) = (p <> bpack v, f p x)
+      where
+        p = maybe "" (<> "_") mp
 
-type DLView = (IType, [B.ByteString])
+flattenInterfaceLikeMap :: forall a . InterfaceLikeMap a -> M.Map SLPart a
+flattenInterfaceLikeMap = flattenInterfaceLikeMap_ (flip const)
+
+data DLView = DLView
+  { dvw_at :: SrcLoc
+  , dvw_it :: IType
+  , dvw_as :: [B.ByteString]
+  }
+  deriving (Eq)
+
+instance Pretty DLView where
+  pretty (DLView {..}) = pretty (dvw_it, dvw_as)
 
 type DLViews = InterfaceLikeMap DLView
 
@@ -1571,3 +1603,12 @@ instance Pretty FromInfo where
   pretty = \case
     FI_Continue svs -> pform "continue" (pretty svs)
     FI_Halt toks -> pform "halt" (pretty toks)
+
+data CInterval a
+  = CBetween (Maybe a) (Maybe a)
+  deriving (Show, Eq)
+
+instance Pretty a => Pretty (CInterval a) where
+  pretty (CBetween f t) = pform "between" $ go f <+> go t
+    where
+      go = brackets . pretty

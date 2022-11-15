@@ -27,13 +27,13 @@ import {
   j2s,
   j2sf,
   handleFormat,
-  hideWarnings,
   makeParseCurrency,
   protectMnemonic,
   protectSecretKey,
   SecretKeyInput,
   Mnemonic,
   mkGetEventTys,
+  mShowFundFromFaucetWarning,
 } from './shared_impl';
 import {
   bigNumberify,
@@ -98,13 +98,12 @@ type Interface = real_ethers.utils.Interface;
 // on unhandled promise rejection, use:
 // node --unhandled-rejections=strict
 
-const reachBackendVersion = 25;
-const reachEthBackendVersion = 8;
+const reachBackendVersion = 26;
+const reachEthBackendVersion = 9;
 export type Backend = IBackend<AnyETH_Ty> & {_Connectors: {ETH: {
   version: number,
   ABI: string,
   Bytecode: string,
-  views: {[viewn: string]: string | {[keyn: string]: string}},
 }}};
 type BackendViewsInfo = IBackendViewsInfo<AnyETH_Ty>;
 type BackendViewInfo = IBackendViewInfo<AnyETH_Ty>;
@@ -137,7 +136,7 @@ type AccountTransferable = Account | {
   getStorageLimit?: () => BigNumber,
 };
 
-const reachPublish = (m: string | number) => `_reach_m${m}`
+const reachPublish = (m: string | number) => `_reachp_${m}`
 const reachEvent = (e: string | number) => `_reach_e${e}`
 const reachOutputEvent = (e: string | number) => `_reach_oe_${e}`;
 
@@ -219,8 +218,8 @@ const sendRecv_prepArg = (lct:BigNumber, args:Array<any>, tys:Array<any>, evt_cn
   const [ _tys_svs, tys_msg ] = argsSplit(tys, evt_cnt);
   void(_args_svs); void(_tys_svs);
   // @ts-ignore
-  const arg_ty = T_Tuple([T_UInt, T_Tuple(tys_msg)]);
-  return arg_ty.munge([lct, args_msg]);
+  const arg_ty = T_Tuple([T_UInt, ...tys_msg]);
+  return arg_ty.munge([lct, ...args_msg]);
 };
 
 type EQInitArgs = {
@@ -317,7 +316,7 @@ const makeLogRepFor = ( getCtcAddress: (() => Address), iface:Interface, i:numbe
   debug(`hasLogFor`, i, tys);
   return makeLogRep( getCtcAddress, iface, reachEvent(i), [
     T_Address,
-    T_Tuple([T_UInt, T_Tuple(tys)])
+    T_Tuple([T_UInt, ...tys])
   ]);
 };
 const makeHasLogFor = ( getCtcAddress: (() => Address), iface:Interface, i:number, tys:AnyETH_Ty[]) => {
@@ -562,7 +561,7 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
         const dhead = [label, 'apiMapRef'];
         debug(dhead, {i, ty, f});
         const ethersC = await getC();
-        const mf = `_reachMap${i}Ref`;
+        const mf = `_reachm_${i}Ref`;
         debug(dhead, mf);
         const mfv = await ethersC[mf](f);
         debug(dhead, { mfv });
@@ -717,7 +716,7 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
         if ( ! ep ) { throw Error(`no event log`); }
         debug(dhead, 'Event', ep);
         const from = ep[0];
-        const data = ep[1][1];
+        const data = ep[1].slice(1);
 
         debug(dhead, `OKAY`, data);
         const theBlockBN = bigNumberify(theBlock);
@@ -802,16 +801,16 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
           void(args);
           throw Error('viewMapRef not used by ETH backend'); },
       };
-      const views_namesm = bin._Connectors.ETH.views;
       const getView1 = (vs:BackendViewsInfo, v:string, k:string|undefined, vim: BackendViewInfo, isSafe = true) =>
-        async (...args: any[]): Promise<any> => {
+        async (...gargs: any[]): Promise<any> => {
           void(vs);
           const { dom, rng } = vim;
           const ethersC = await getC();
-          const vnv = views_namesm[v];
-          const vkn = (typeof vnv === 'string') ? vnv : vnv[k!];
-          const mungedArgs = args.map((arg, i) => dom[i].munge(arg));
-          debug(label, 'getView1', v, k, 'args', args, vkn, dom, rng);
+          const vkn = `${v}${(typeof k === 'string') ? `_${k}` : ''}`;
+          debug(label, 'getView1', v, k, 'gargs', gargs, vkn, dom, rng);
+          const cArgs = gargs.map((arg, i) => dom[i].canonicalize(arg));
+          debug(label, 'getView1', 'cArgs', cArgs);
+          const mungedArgs = cArgs.map((arg, i) => dom[i].munge(arg));
           debug(label, `getView1 mungedArgs = ${mungedArgs}`);
           let val;
           try { val = await ethersC[vkn](...mungedArgs); }
@@ -962,9 +961,7 @@ const createAccount = async () => {
 }
 
 const fundFromFaucet = async (account: AccountTransferable | Address, value: any) => {
-  if (! hideWarnings()) {
-    console.error("Warning: your program uses stdlib.fundFromFaucet. That means it only works on Reach devnets!");
-  }
+  mShowFundFromFaucetWarning();
   const f = await _specialFundFromFaucet();
   if (f) {
     return await f(account, value);

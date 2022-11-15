@@ -33,6 +33,7 @@ import Reach.AddCounts
 import Reach.AST.Base
 import Reach.AST.DLBase
 import Reach.AST.CP
+import Reach.AST.CL
 import Reach.BinaryLeafTree
 import Reach.CommandLine
 import Reach.Connector
@@ -995,6 +996,9 @@ data Env = Env
   , eApiCalls :: M.Map SLPart Int
   , eGetStateKeys :: IO Int
   }
+
+instance HasCounter Env where
+  getCounter = eCounter
 
 type App = ReaderT Env IO
 
@@ -2832,15 +2836,6 @@ bindTime dv = store_let dv True cRound
 bindSecs :: DLVar -> App a -> App a
 bindSecs dv = store_let dv True (code "global" ["LatestTimestamp"])
 
-allocDLVar_ :: Counter -> SrcLoc -> DLType -> IO DLVar
-allocDLVar_ c at t =
-  DLVar at Nothing t <$> incCounter c
-
-allocDLVar :: SrcLoc -> DLType -> App DLVar
-allocDLVar at t = do
-  c <- eCounter <$> ask
-  liftIO $ allocDLVar_ c at t
-
 bindFromGV :: GlobalVar -> App () -> SrcLoc -> [DLVarLet] -> App a -> App a
 bindFromGV gv ensure at vls m = do
   let notNothing = \case
@@ -2849,8 +2844,8 @@ bindFromGV gv ensure at vls m = do
   case any notNothing vls of
     False -> m
     True -> do
-      av <- allocDLVar at $ T_Tuple $ map varLetType vls
-      av_dup <- allocDLVar at $ T_Tuple $ map varLetType vls
+      av <- allocVar at $ T_Tuple $ map varLetType vls
+      av_dup <- allocVar at $ T_Tuple $ map varLetType vls
       ensure
       -- This relies on knowing what sallocVarLet will do
       let shouldDup (DLVarLet mvc _) =
@@ -2883,11 +2878,11 @@ bindFromStack _at vsl m = do
 
 cloop :: Int -> CHandler -> App ()
 cloop _ (C_Handler {}) = impossible $ "cloop h"
-cloop which (C_Loop at svs vars body) = recordWhich which $ do
+cloop which (C_Loop {..}) = recordWhich which $ do
   block (loopLabel which) $ do
     -- STACK: [ ...svs ...vars ] TOP on right
-    bindFromStack at (svs <> vars) $
-      ct body
+    bindFromStack cl_at (cl_svs <> cl_vars) $
+      ct cl_body
 
 -- NOTE This could be compiled to a jump table if that were possible with TEAL
 cblt :: String -> (Int -> a -> App ()) -> BLT Int a -> App ()
@@ -2906,7 +2901,8 @@ cblt lab go t = do
         rec rv mhi r
         label llab
         rec low (Just $ rv - 1) l
-      Leaf which h -> do
+      Leaf which _mustCheck h -> do
+        -- XXX mustCheck is supposed to be this test
         case (which == low && mhi == Just which) of
           True -> op "pop"
           False -> do
@@ -2960,7 +2956,7 @@ callCompanion at cc = do
       case mcr of
         Nothing -> go Nothing
         Just _ -> do
-          dv <- allocDLVar at t
+          dv <- allocVar at t
           sallocLet dv (gvLoad GV_companion) $
             go $ Just $ DLA_Var dv
     CompanionCreate -> do
@@ -3251,7 +3247,7 @@ cview (who, VSITopInfo cview_arg_tys cview_ret_ty cview_hs aliases) = do
 doWrapData :: [DLType] -> (DLArg -> App ()) -> App ()
 doWrapData tys mk = do
   -- Tuple of tys is on stack
-  av <- allocDLVar sb $ T_Tuple tys
+  av <- allocVar sb $ T_Tuple tys
   sallocLet av (return ()) $ mk (DLA_Var av)
   -- Data of tys is on stack
   return ()
@@ -3357,7 +3353,7 @@ analyzeViews :: DLViewsX -> VSITop
 analyzeViews (DLViewsX vs vis) = vsit
   where
     vsit = M.fromList $ concatMap (\ (mi, m) -> map (got mi) $ M.toList m) $ M.toList vs
-    got mi (who, (it, aliases)) = (f, v $ map mk aliases)
+    got mi (who, (DLView _at it aliases)) = (f, v $ map mk aliases)
       where
         v = VSITopInfo args ret hs
         mk n = maybe "" (<> "_") mi <> n
@@ -3486,7 +3482,7 @@ compile_algo env disp (CPProg {..}) = do
               mergeIORef gFailuresR S.union eFailuresR
               mergeIORef gWarningsR S.union eWarningsR
         companionMaker <- readCompanionCache
-        cr_rv <- allocDLVar_ eCounter at T_Contract
+        cr_rv <- allocVar_ eCounter at T_Contract
         eCompanionRec <- companionMaker cr_rv
         eLibrary <- newIORef mempty
         let eGetStateKeys = do
@@ -3671,6 +3667,7 @@ compile_algo env disp (CPProg {..}) = do
     code "b" [ "apiReturn_noCheck" ]
     label "alloc"
     let ctf f x = do
+          liftIO $ modifyIORef resr $ M.insert (LT.toStrict f) $ AS.Number $ fromIntegral x
           cint x
           code "txn" [f]
           asserteq
@@ -3723,6 +3720,23 @@ verifyMapTypes badx = mapM $ \ DLMapInfo {..} -> do
     unless (dlmi_kt == T_Address) $ do
       badx $ LT.pack $ "Cannot use '" <> show dlmi_kt <> "' as Map key. Only 'Address' keys are allowed."
     return $ DLMapInfo {..}
+
+data ALGOConnectorInfo = ALGOConnectorInfo
+  { aci_appApproval :: String
+  , aci_appClear :: String
+  } deriving (Show)
+
+instance AS.ToJSON ALGOConnectorInfo where
+  toJSON (ALGOConnectorInfo {..}) = AS.object $
+    [ "approvalB64" .= aci_appApproval
+    , "clearStateB64" .= aci_appClear
+    ]
+
+instance AS.FromJSON ALGOConnectorInfo where
+  parseJSON = AS.withObject "ALGOConnectorInfo" $ \obj -> do
+    aci_appApproval <- obj .: "appApproval"
+    aci_appClear <- obj .: "appClear"
+    return $ ALGOConnectorInfo {..}
 
 data ALGOCodeIn = ALGOCodeIn
   { aci_approval :: String
@@ -3786,10 +3800,10 @@ instance AS.ToJSON ALGOCodeOpts where
 
 instance AS.FromJSON ALGOCodeOpts where
   parseJSON = AS.withObject "ALGOCodeOpts" $ \obj -> do
-    aco_globalUints <- fromMaybe 0 <$> obj .:? "globalUints"
-    aco_globalBytes <- fromMaybe 0 <$> obj .:? "globalBytes"
-    aco_localUints <- fromMaybe 0 <$> obj .:? "localUints"
-    aco_localBytes <- fromMaybe 0 <$> obj .:? "localBytes"
+    aco_globalUints <- fromMaybe 0 <$> firstJustM (obj .:?) [ "globalUints", "GlobalNumUint" ]
+    aco_globalBytes <- fromMaybe 0 <$> firstJustM (obj .:?) [ "globalBytes", "GlobalNumByteSlice" ]
+    aco_localUints  <- fromMaybe 0 <$> firstJustM (obj .:?) [ "localUints", "LocalNumUint" ]
+    aco_localBytes  <- fromMaybe 0 <$> firstJustM (obj .:?) [ "localBytes", "LocalNumByteSlice" ]
     return $ ALGOCodeOpts {..}
 
 ccTEAL :: String -> CCApp BS.ByteString
@@ -3812,12 +3826,12 @@ connect_algo env = Connector {..}
   where
     conName = conName'
     conCons = conCons'
-    conGen moutn pl = case moutn of
+    conGen moutn clp = case moutn of
       Nothing -> withSystemTempDirectory "reachc-algo" $ \d ->
-        go (\w -> d </> T.unpack w) pl
-      Just outn -> go outn pl
-    go :: (T.Text -> String) -> CPProg -> IO ConnectorInfo
-    go outn = compile_algo env disp
+        go (\w -> d </> T.unpack w) clp
+      Just outn -> go outn clp
+    go :: (T.Text -> String) -> CLProg -> IO ConnectorInfo
+    go outn = compile_algo env disp . clp_old
       where
         disp :: String -> T.Text -> IO String
         disp which c = do
@@ -3836,3 +3850,7 @@ connect_algo env = Connector {..}
     conContractNewOpts mv = do
       (aco :: ALGOCodeOpts) <- aesonParse $ fromMaybe (AS.object mempty) mv
       return $ AS.toJSON aco
+    conCompileConnectorInfo :: Maybe AS.Value -> Either String AS.Value
+    conCompileConnectorInfo v = do
+      ALGOConnectorInfo {..} <- aesonParse $ fromMaybe (AS.object mempty) v
+      return $ AS.toJSON $ ALGOConnectorInfo {..}

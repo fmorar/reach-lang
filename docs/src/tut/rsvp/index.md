@@ -583,8 +583,8 @@ Reach will detect this error and show the following error during verification:
 
 ```
 load: /examples/rsvp-5-cede/index-fail.txt
-md5: 8327117573985aac4f09dce2fee9d5a3
-range: 4-25
+md5: f07e7976fec1b2c377baaaaa8c033f17
+range: 5-26
 ```
 
 This program is interesting, because the invariants and assertions are set up in such a way that almost no other program could possibly satisfy them.
@@ -599,16 +599,16 @@ The program starts exactly the same as before:
 
 ```
 load: /examples/rsvp-5-cede/index.mjs
-md5: dfb66d14685af393468aaed525281e51
-range: 1-43
+md5: 2721732986c261f7ca435a92246fc621
+range: 1-45
 ```
 
 But after we define the details, there's a difference:
 
 ```
 load: /examples/rsvp-5-cede/index.mjs
-md5: dfb66d14685af393468aaed525281e51
-range: 45-50
+md5: 2721732986c261f7ca435a92246fc621
+range: 47-52
 ```
 
 We define the Host's contract handle and have them run the Admin participant, which creates and launches the single contract instance for everyone.
@@ -616,16 +616,16 @@ As mentioned above, we could have a separate account do this, but we choose not 
 
 ```
 load: /examples/rsvp-5-cede/index.mjs
-md5: dfb66d14685af393468aaed525281e51
-range: 52-67
+md5: 2721732986c261f7ca435a92246fc621
+range: 54-70
 ```
 
 The code for guests is much simpler, because in each case we just have either the Guest call the `register` function or the Host call the `checkin` function.
 
 ```
 load: /examples/rsvp-5-cede/index.mjs
-md5: dfb66d14685af393468aaed525281e51
-range: 69-77
+md5: 2721732986c261f7ca435a92246fc621
+range: 72-80
 ```
 
 Everything else about the program is the same.
@@ -795,9 +795,9 @@ range: 59-70
 ```
 
 We've added a gas limit using `{!js} stdlib.setGasLimit` for testing on Ethereum.
-Normally the gas limit is computed by looking at the contract code, but it is not always accurate. 
+Normally the gas limit is computed by looking at the contract code, but it is not always accurate.
 There is always a gas limit, even if we don't specify anything.
-We've set the "limit" to the largest possible amount of gas that could ever be spent. 
+We've set the "limit" to the largest possible amount of gas that could ever be spent.
 Thus, we're removing the limit by setting it to be "infinity".
 
 Next, we modify the `willGo` function so that the Guest, before they register, inspects the event details and looks at the reservation price.

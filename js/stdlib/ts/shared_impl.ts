@@ -6,6 +6,8 @@ import {
   CBR_Address,
   bigNumberify,
   CBR_Bytes,
+  unk_to_buf,
+  buf_to_arr,
 } from './CBR';
 import util from 'util';
 import {
@@ -70,6 +72,14 @@ export const setDEBUG = (b: boolean) => {
 };
 
 export const hideWarnings = (): boolean => truthyEnv(process.env.REACH_NO_WARN);
+
+let faucetWarningShown = false;
+export const mShowFundFromFaucetWarning = () => {
+  if (! (hideWarnings() || faucetWarningShown)) {
+    console.error("Warning: your program uses stdlib.fundFromFaucet. That means it only works on Reach devnets!");
+    faucetWarningShown = true;
+  }
+};
 
 export const getDEBUG = (): boolean => { return DEBUG; };
 
@@ -1325,10 +1335,10 @@ export const makeParseCurrency = (defaultDecs: number) => (amt: CurrencyAmount, 
   return bigNumberify(ethers.utils.parseUnits(amtStr, decimals));
 };
 
-export const canonicalToBytes = (bv: CBR_Bytes) =>
-  (typeof bv == 'string')
-    ? ethers.utils.toUtf8Bytes(bv)
-    : bv;
+export const canonicalToBytes = (bv: CBR_Bytes) => {
+  const [ _, b ] = unk_to_buf(bv);
+  return buf_to_arr(b);
+};
 
 export const isUint8Array = (val: any) => val?.constructor?.name === 'Uint8Array';
 
