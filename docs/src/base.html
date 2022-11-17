@@ -78,7 +78,6 @@
 
     // https://stackoverflow.com/a/68824350
     const toggleTheme = () => {
-      console.log("hello")
       const { classList } = document.documentElement;
       const toggle = document.getElementById("themeToggler");
       const brand = document.querySelector(".navbar-brand");
@@ -107,9 +106,6 @@
   <link rel="stylesheet" type="text/css" href="https://use.fontawesome.com/releases/v6.2.0/css/all.css">
   <link rel="stylesheet" type="text/css" href="/assets/styles.css?v=57">
   <link rel="stylesheet" type="text/css" href="/components/styles.css?v=57">
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>  
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 </head>
 
 <body class="container-fluid noscroll">
@@ -266,6 +262,9 @@
   <script src="https://cdn.jsdelivr.net/npm/algoliasearch@4.5.1/dist/algoliasearch-lite.umd.js" integrity="sha256-EXPXz4W6pQgfYY3yTpnDa3OH8/EPn16ciVsPQ/ypsjk=" crossorigin="anonymous"></script>
   <script src="/assets/scripts.js?v=61" type="module"></script>
   <!-- Cargamos nuestro componente de React. -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>  
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script type="text/babel" src="/components/Footer.jsx"></script>
   <script type="text/babel" src="/components/Search.jsx"></script>
 </body>

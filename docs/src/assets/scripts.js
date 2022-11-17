@@ -75,6 +75,9 @@ const establishDisplayFor = (id, selector, property) => {
     case 'block':
       if (winWidth == 'sm' || winWidth == 'xs'){
         doc.querySelector('.overlay').style.display = "block";
+        doc.querySelector('#otp-col section').style.display = "none";
+      } else {
+        doc.querySelector('#otp-col section').style.display = "block";
       }
       element.style.display = 'block';
       button.style.display = 'none';
@@ -163,6 +166,10 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
   const [ configJson, pageHtml, otpHtml ] =
     await axiosGetData(`${url}index.md`);
 
+    console.log(await axiosGetData(`${url}index.md`))
+    console.log(configJson)
+    console.log(currentPage)
+
   // Book or different book?
   if (configJson.bookPath !== undefined && configJson.bookPath !== currentPage.bookPath) {
     let bookHtml = doc.createRange().createContextualFragment(await axiosGetData(`${window.location.origin}${hh(configJson.bookPath)}book.html`));
@@ -175,12 +182,10 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
     doc.querySelectorAll("#book-col .chapter-title").forEach((item,index)=>{
       if (winWidth == 'sm' || winWidth == 'xs'){
         item.addEventListener("click", ()=>{
-         
           doc.querySelector('.overlay').style.display = "none";
           doc.querySelector('#book-col').style.display = "none";
         }, false)
       }
-      
       if (index >= 24 && index <= 27){
         if(index === 24){
           item.parentNode.classList.add('first-bottom-chapter')
@@ -206,8 +211,9 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
       });
     });
   }
-  currentPage.bookPath = configJson.bookPath;
 
+  currentPage.bookPath = configJson.bookPath;
+  console.log(currentPage)
   // Write page title
   const ctitle = configJson.title;
   const tspan = doc.querySelector('div#hh-viewer-wrapper span.title');
@@ -230,7 +236,7 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
   const hlink = theader.querySelector("a");
   theader.remove();
   tspan.appendChild(hlink);
-  tspan.className += " refHeader"
+  tspan.class += " refHeader"
 
   function groupBy(xs, f) {
     return xs.reduce((r, v, i, a, k = f(v)) => ((r[k] || (r[k] = [])).push(v), r), {});
@@ -242,7 +248,6 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
   const searchParams = new URLSearchParams(rawSearchQuery);
   const searchQuery = searchParams.get('q');
   if (searchInput) {
-    currentPage.bookPath = undefined;
     searchInput.focus();
     const searchResultsList = doc.getElementById('search-results-list');
     const search = async (_evt) => {
@@ -293,7 +298,7 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
           }
           e.appendChild(f)
           e.innerHTML +=`
-          <div className="search-arrow">
+          <div class="search-arrow">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="15" viewBox="0 0 18 15" fill="none">
               <path d="M7 4V0L0 7L7 14V9.9C12 9.9 15.5 11.5 18 15C17 10 14 5 7 4Z" fill="currentColor" />
             </svg>
@@ -355,6 +360,36 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
 
   // Establish correct display values.
   establishDisplay();
+
+
+  const nextChapter= doc.createElement("div")
+  const activeIndex= Array.from(doc.querySelectorAll('.chapter-title')).indexOf(doc.querySelector(".active"))
+  nextChapter.innerHTML +=`
+  <section class="col-sm-2 p-2">
+    <a href="${doc.querySelectorAll('.chapter-title')[activeIndex + 1].href}">
+      <div class="first-row-footer">
+        <div class="p-1 footer-card">
+          <p>Next DOC</p>
+          <p class="footer-card-text mt-2">
+              ${doc.querySelectorAll('.chapter-title')[activeIndex + 1].textContent}
+          </p>
+          <div class="next-chapter-content">
+          <p class="footer-card-text mt-2">
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ipsum quam inte. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ipsum quam inte.
+          </p>
+          <svg xmlns="http://www.w3.org/2000/svg" width="46" height="46" viewBox="0 0 46 46" fill="none">
+            <path d="M22.8638 0.727051L18.9118 4.67899L34.5514 20.3466L0.441406 20.3466L0.441406 25.9522L34.5514 25.9522L18.9118 41.6198L22.8638 45.5718L45.2861 23.1494L22.8638 0.727051Z" fill="black"/>
+          </svg>
+          </div>
+        </div>
+      </div>
+    </a>
+</section>
+          `
+if (activeIndex > -1 && activeIndex < 23){
+  doc.querySelector('div#hh-viewer-wrapper div#hh-viewer').append(nextChapter);
+}
+ 
 
 
   // Display homepage styles.
