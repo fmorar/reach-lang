@@ -166,10 +166,6 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
   const [ configJson, pageHtml, otpHtml ] =
     await axiosGetData(`${url}index.md`);
 
-    console.log(await axiosGetData(`${url}index.md`))
-    console.log(configJson)
-    console.log(currentPage)
-
   // Book or different book?
   if (configJson.bookPath !== undefined && configJson.bookPath !== currentPage.bookPath) {
     let bookHtml = doc.createRange().createContextualFragment(await axiosGetData(`${window.location.origin}${hh(configJson.bookPath)}book.html`));
@@ -213,7 +209,7 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
   }
 
   currentPage.bookPath = configJson.bookPath;
-  console.log(currentPage)
+
   // Write page title
   const ctitle = configJson.title;
   const tspan = doc.querySelector('div#hh-viewer-wrapper span.title');
@@ -361,24 +357,29 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
   // Establish correct display values.
   establishDisplay();
 
-
+  // Implement next section card 
   const nextChapter= doc.createElement("div")
+  nextChapter.classList.add("next-chapter-container")
   const activeIndex= Array.from(doc.querySelectorAll('.chapter-title')).indexOf(doc.querySelector(".active"))
+ 
+if (configJson.titleId !=="reach-top" && activeIndex + 1 !==  Array.from(doc.querySelectorAll('.chapter-title')).length){
   nextChapter.innerHTML +=`
-  <section class="col-sm-2 p-2">
+  <section class="p-2 next-chapter-card">
     <a href="${doc.querySelectorAll('.chapter-title')[activeIndex + 1].href}">
-      <div class="first-row-footer">
-        <div class="p-1 footer-card">
+      <div class="first-row-chapter">
+        <div>
           <p>Next DOC</p>
-          <p class="footer-card-text mt-2">
+          <p class="mt-2 next-chapter-title">
               ${doc.querySelectorAll('.chapter-title')[activeIndex + 1].textContent}
           </p>
           <div class="next-chapter-content">
-          <p class="footer-card-text mt-2">
+          <div>
+          <p class="mt-2">
           Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ipsum quam inte. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ipsum quam inte.
           </p>
+          </div>
           <svg xmlns="http://www.w3.org/2000/svg" width="46" height="46" viewBox="0 0 46 46" fill="none">
-            <path d="M22.8638 0.727051L18.9118 4.67899L34.5514 20.3466L0.441406 20.3466L0.441406 25.9522L34.5514 25.9522L18.9118 41.6198L22.8638 45.5718L45.2861 23.1494L22.8638 0.727051Z" fill="black"/>
+            <path d="M22.8638 0.727051L18.9118 4.67899L34.5514 20.3466L0.441406 20.3466L0.441406 25.9522L34.5514 25.9522L18.9118 41.6198L22.8638 45.5718L45.2861 23.1494L22.8638 0.727051Z" fill="currentColor"/>
           </svg>
           </div>
         </div>
@@ -386,7 +387,6 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
     </a>
 </section>
           `
-if (activeIndex > -1 && activeIndex < 23){
   doc.querySelector('div#hh-viewer-wrapper div#hh-viewer').append(nextChapter);
 }
  
@@ -397,6 +397,7 @@ if (activeIndex > -1 && activeIndex < 23){
   doc.querySelector('div#hh-page-header').style.cssText = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '' : 'margin: 0;float:left;border:none' : 'margin: 0;float:left;border:none';
   doc.querySelector('div.show-book-col').style.cssText = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '' : 'background-color:white;display:block' : 'background-color:white;display:block';
   doc.querySelector('#page-col').style.padding = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '16px 24px' : '16px 0 0 0' : '16px 0 0 0';
+  doc.querySelector('#page-col').style.backgroundColor = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? 'var(--page-col)' : 'var(--light-mode-white)' : 'var(--page-col)';
  
   doc.getElementById('page-col').style.display = 'block';
 

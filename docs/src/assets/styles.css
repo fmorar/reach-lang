@@ -48,138 +48,7 @@ main {
   font-weight: bold;
 }
 
-/************************************************
- responsive
-************************************************/
 
-/* $grid-breakpoints: (  xs: 0,  sm: 576px,  md: 768px,  lg: 992px,  xl: 1200px,  xxl: 1400px); */
-
-#book-col.display {
-  display: none;
-}
-
-#page-col.display {
-  display: block;
-}
-
-#otp-col.display {
-  display: block;
-}
-
-.search-modal{
-  position: absolute;
-  height: 50%;
-  background: var(--light-mode-white);
-  width: 50%;
-  border-radius: 10px;
-  overflow: auto;
-  z-index: 6;
-  top: 20%;
-}
-
-::-webkit-scrollbar {
-  width: 5px;
-  background-color: transparent;
-}
-
-/* Track */
-::-webkit-scrollbar-track {
-  box-shadow: none; 
-  border-radius: 10px;
-}
- 
-/* Handle */
-::-webkit-scrollbar-thumb {
-  background: var(--scrollbar); 
-  border-radius: 10px;
-}
-
-#search-results-list{
-  margin: 1rem;
-}
-
-.overlay{
-position: absolute;
-width: 100%;
-height: 100%;
-z-index: 2; /* sidebar must have z-index > 999 */
-background: rgba(51, 51, 51, 0.5);
-opacity: 50%; /* or background set to rgba(255, 255, 255, 0); */
-}
-
-@media (min-width: 768px) {
-  #book-col {
-    max-width: 280px;
-    min-width: 280px;
-  }
-
-  #otp-col {
-    max-width: 280px;
-    min-width: 280px;
-  }
-
-  #book-col.display {
-    display: block;
-  }
-
-  #page-col div.show-book-col {
-    display: none;
-  }
-}
-
-@media (max-width: 768px) {
-  #book-col.display {
-    position: absolute;
-    z-index: 3;
-    left: 0;
-    width: 80%;
-  }
-  #otp-col.display {
-    position: absolute;
-    z-index: 3;
-    right: 0;
-    width: 80%;
-  }
-}
-
-@media (min-width: 1200px) {
-  #page-col button.show-otp-col {
-    display: none;
-  }
-
-  #otp-col.display {
-    display: block;
-  }
-}
-
-@media (max-width: 576px) {
-  .diamond-shape {
-    position: absolute;
-    top: 200%;
-  }
-
-  .first-explore-row {
-    padding-left: 3rem;
-    margin-left: 1rem;
-  }
-
-  .last-number-line,
-  .number-line,
-  .first-number-line {
-    display: none;
-  }
-
-  .first-explore-row {
-    padding-left: 3rem;
-    margin-left: 1rem;
-  }
-}
-
-@media (min-width: 992px) {
-  .navbar-nav {
-    order: 1;
-  }
-}
 
 /************************************************
  color constants
@@ -237,6 +106,7 @@ opacity: 50%; /* or background set to rgba(255, 255, 255, 0); */
   --list-background: #eef7fc;
   --link-internal: #4536da;
   --scrollbar: #666666;
+  --page-col: #ffffff;
 
   --shiki-color-text: #24292e;
   --shiki-color-background: var(--snippet);
@@ -308,6 +178,7 @@ opacity: 50%; /* or background set to rgba(255, 255, 255, 0); */
     --list-background: #702424;
     --link-internal: #ffffff;
     --scrollbar: #666666;
+    --page-col: #151515;
 
     --shiki-color-text: #d0d0d0;
     --shiki-color-background: var(--snippet);
@@ -377,6 +248,7 @@ opacity: 50%; /* or background set to rgba(255, 255, 255, 0); */
   --list-background: #702424;
   --link-internal: #ffffff;
   --scrollbar: #666666;
+  --page-col: #151515;
 
   --shiki-color-text: #d0d0d0;
   --shiki-color-background: var(--snippet);
@@ -510,7 +382,7 @@ i.fa-angle-right {
 
 #page-col {
   padding: 16px 0;
-  background-color: var(--light-mode-white);
+  background-color: var(--page-col);
 }
 
 .first-row {
@@ -1140,6 +1012,50 @@ p.punch span {
   width: 100%;
 }
 
+.next-chapter-container{
+  display: flex;
+  justify-content: flex-end;
+}
+
+.next-chapter-card {
+  width: 40%;
+  height: 100%;
+}
+
+.first-row-chapter {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  height: 100%;
+  box-sizing: content-box;
+  position: relative;
+  background-color: var(--card-section-footer);
+  color: var(--body-color);
+  padding: 2rem;
+}
+
+.next-chapter-content{
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.next-chapter-content div{
+  width: 80%;
+}
+
+.next-chapter-content div p{
+  font-size: 14px;
+}
+
+.next-chapter-title{
+  font-weight: 700; 
+  font-size: 29.5031px;
+}
+
 .blue-bg-text {
   background: #4536da;
   font-weight: 500;
@@ -1420,7 +1336,7 @@ iframe.gray-scale {
 ************************************************/
 
 #otp-col {
-  background-color: var(--light-mode-white);
+  background-color: var(--page-col);
 }
 
 #otp-col a {
@@ -1629,4 +1545,141 @@ img {
 }
 
 .sdPara div span.p {
+}
+
+/************************************************
+ responsive
+************************************************/
+
+/* $grid-breakpoints: (  xs: 0,  sm: 576px,  md: 768px,  lg: 992px,  xl: 1200px,  xxl: 1400px); */
+
+#book-col.display {
+  display: none;
+}
+
+#page-col.display {
+  display: block;
+}
+
+#otp-col.display {
+  display: block;
+}
+
+.search-modal{
+  position: absolute;
+  height: 50%;
+  background: var(--light-mode-white);
+  width: 50%;
+  border-radius: 10px;
+  overflow: auto;
+  z-index: 6;
+  top: 20%;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+  background-color: transparent;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  box-shadow: none; 
+  border-radius: 10px;
+}
+ 
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar); 
+  border-radius: 10px;
+}
+
+#search-results-list{
+  margin: 1rem;
+}
+
+.overlay{
+position: absolute;
+width: 100%;
+height: 100%;
+z-index: 2; /* sidebar must have z-index > 999 */
+background: rgba(51, 51, 51, 0.5);
+opacity: 50%; /* or background set to rgba(255, 255, 255, 0); */
+}
+
+@media (min-width: 768px) {
+  #book-col {
+    max-width: 280px;
+    min-width: 280px;
+  }
+
+  #otp-col {
+    max-width: 280px;
+    min-width: 280px;
+  }
+
+  #book-col.display {
+    display: block;
+  }
+
+  #page-col div.show-book-col {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  #book-col.display {
+    position: absolute;
+    z-index: 3;
+    left: 0;
+    width: 80%;
+  }
+  #otp-col.display {
+    position: absolute;
+    z-index: 3;
+    right: 0;
+    width: 80%;
+  }
+  .next-chapter-card {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+@media (min-width: 1200px) {
+  #page-col button.show-otp-col {
+    display: none;
+  }
+
+  #otp-col.display {
+    display: block;
+  }
+}
+
+@media (max-width: 576px) {
+  .diamond-shape {
+    position: absolute;
+    top: 200%;
+  }
+
+  .first-explore-row {
+    padding-left: 3rem;
+    margin-left: 1rem;
+  }
+
+  .last-number-line,
+  .number-line,
+  .first-number-line {
+    display: none;
+  }
+
+  .first-explore-row {
+    padding-left: 3rem;
+    margin-left: 1rem;
+  }
+}
+
+@media (min-width: 992px) {
+  .navbar-nav {
+    order: 1;
+  }
 }
