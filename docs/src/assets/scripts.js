@@ -361,6 +361,10 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
   const nextChapter= doc.createElement("div")
   nextChapter.classList.add("next-chapter-container")
   const activeIndex= Array.from(doc.querySelectorAll('.chapter-title')).indexOf(doc.querySelector(".active"))
+  const nextChapterInfo = await axiosGetData(`${doc.querySelectorAll('.chapter-title')[activeIndex + 1].href}index.md`);
+  const nextChapterHtml = doc.createRange().createContextualFragment(nextChapterInfo[1]);
+  const firstText = nextChapterHtml.querySelector("p")?.textContent
+  const shortDescription = firstText ? firstText.length > 200 ? firstText.substring(0,200) + "..." : firstText.substring(0, firstText.length - 2) : "";
  
 if (configJson.titleId !=="reach-top" && activeIndex + 1 !==  Array.from(doc.querySelectorAll('.chapter-title')).length){
   nextChapter.innerHTML +=`
@@ -374,9 +378,9 @@ if (configJson.titleId !=="reach-top" && activeIndex + 1 !==  Array.from(doc.que
           </p>
           <div class="next-chapter-content">
           <div>
-          <p class="mt-2">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ipsum quam inte. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ipsum quam inte.
-          </p>
+          ${shortDescription ? `<p class="mt-2">
+          ${shortDescription}
+          </p>` : ""}
           </div>
           <svg xmlns="http://www.w3.org/2000/svg" width="46" height="46" viewBox="0 0 46 46" fill="none">
             <path d="M22.8638 0.727051L18.9118 4.67899L34.5514 20.3466L0.441406 20.3466L0.441406 25.9522L34.5514 25.9522L18.9118 41.6198L22.8638 45.5718L45.2861 23.1494L22.8638 0.727051Z" fill="currentColor"/>

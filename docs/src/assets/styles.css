@@ -108,15 +108,15 @@ main {
   --scrollbar: #666666;
   --page-col: #ffffff;
 
-  --shiki-color-text: #24292e;
+  --shiki-color-text: #FFFFFF;
   --shiki-color-background: var(--snippet);
-  --shiki-token-constant: #005cc5;
+  --shiki-token-constant: #70A1D6;
   --shiki-token-string: #770000;
   --shiki-token-comment: #6a737d;
-  --shiki-token-keyword: #d73a49;
+  --shiki-token-keyword: #ED9191;
   --shiki-token-parameter: #aa5000;
-  --shiki-token-function: #6f42c1;
-  --shiki-token-string-expression: #032f62;
+  --shiki-token-function: #B5B0F0;
+  --shiki-token-string-expression: #FFFFFF;
   --shiki-token-punctuation: #24292e;
   --shiki-token-link: #ee0000;
   --card-section: #ffffff;
@@ -180,15 +180,15 @@ main {
     --scrollbar: #666666;
     --page-col: #151515;
 
-    --shiki-color-text: #d0d0d0;
+    --shiki-color-text: #FFFFFF;
     --shiki-color-background: var(--snippet);
-    --shiki-token-constant: #508cc5;
+    --shiki-token-constant: #70A1D6;
     --shiki-token-string: #770000;
     --shiki-token-comment: #6a737d;
-    --shiki-token-keyword: #d73a49;
+    --shiki-token-keyword: #ED9191;
     --shiki-token-parameter: #aa5000;
-    --shiki-token-function: #8f62c1;
-    --shiki-token-string-expression: #23b0b2;
+    --shiki-token-function: #B5B0F0;
+    --shiki-token-string-expression: #FFFFFF;
     --shiki-token-punctuation: #b0b0b0;
     --shiki-token-link: #ee0000;
   }
@@ -250,15 +250,15 @@ main {
   --scrollbar: #666666;
   --page-col: #151515;
 
-  --shiki-color-text: #d0d0d0;
+  --shiki-color-text: #FFFFFF;
   --shiki-color-background: var(--snippet);
-  --shiki-token-constant: #508cc5;
+  --shiki-token-constant: #70A1D6;
   --shiki-token-string: #770000;
   --shiki-token-comment: #6a737d;
-  --shiki-token-keyword: #d73a49;
+  --shiki-token-keyword: #ED9191;
   --shiki-token-parameter: #aa5000;
-  --shiki-token-function: #8f62c1;
-  --shiki-token-string-expression: #23b0b2;
+  --shiki-token-function: #B5B0F0;
+  --shiki-token-string-expression: #FFFFFF;
   --shiki-token-punctuation: #b0b0b0;
   --shiki-token-link: #ee0000;
 }
@@ -1219,14 +1219,6 @@ iframe.gray-scale {
   -ms-overflow-style: none;
   /* Internet Explorer 10+ */
   margin-bottom: 0;
-}
-
-#page-col div#hh-viewer ol.snippet li {
-  color: #ffffff !important;
-}
-
-#page-col div#hh-viewer ol.snippet li span {
-  color: #ffffff !important;
 }
 
 #page-col div#hh-viewer pre:not(.snippet) {
