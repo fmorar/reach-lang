@@ -402,7 +402,7 @@ if (configJson.titleId !=="reach-top" && activeIndex + 1 !==  Array.from(doc.que
   doc.querySelector('div.show-book-col').style.cssText = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '' : 'background-color:white;display:block' : 'background-color:white;display:block';
   doc.querySelector('#page-col').style.padding = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '16px 24px' : '16px 0 0 0' : '16px 0 0 0';
   doc.querySelector('#page-col').style.backgroundColor = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? 'var(--page-col)' : 'var(--light-mode-white)' : 'var(--page-col)';
- 
+  doc.querySelector('#page-col .footer').style.margin = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '0 -24px -16px -24px' : '0' : '0 -24px -16px -24px';
   doc.getElementById('page-col').style.display = 'block';
 
   // Display OTP.

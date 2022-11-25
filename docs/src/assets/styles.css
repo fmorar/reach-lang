@@ -107,6 +107,8 @@ main {
   --link-internal: #4536da;
   --scrollbar: #666666;
   --page-col: #ffffff;
+  --link-active: #4536DA;
+  --link-book-active: #000000;
 
   --shiki-color-text: #FFFFFF;
   --shiki-color-background: var(--snippet);
@@ -179,6 +181,8 @@ main {
     --link-internal: #ffffff;
     --scrollbar: #666666;
     --page-col: #151515;
+    --link-active: #8F87E8;
+    --link-book-active: #FFFFFF;
 
     --shiki-color-text: #FFFFFF;
     --shiki-color-background: var(--snippet);
@@ -249,6 +253,8 @@ main {
   --link-internal: #ffffff;
   --scrollbar: #666666;
   --page-col: #151515;
+  --link-active: #8F87E8;
+  --link-book-active: #FFFFFF;
 
   --shiki-color-text: #FFFFFF;
   --shiki-color-background: var(--snippet);
@@ -476,6 +482,10 @@ i.fa-angle-right {
   color: var(--explore-row-color-hover);
   background-color: var(--explore-row-background-hover);
   height: 70%;
+}
+
+.first-explore-row .mb-8 {
+  margin-bottom: 5rem;
 }
 
 .contribute-hover,
@@ -810,10 +820,14 @@ i.fa-angle-right {
   /*color: white;*/
 }
 
-#book-col a.chapter-title.active,
+#book-col a.chapter-title.active {
+  color: var(--link-active);
+  font-weight: 700;
+}
+
 #otp-col ul li:not(.top) a.active {
-  background: var(--otp-col-background);
-  color: var(--light-mode-white);
+  color: var(--link-book-active);
+  font-weight: 700;
 }
 
 /* 28ADDC */
