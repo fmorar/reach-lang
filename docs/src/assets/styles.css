@@ -109,6 +109,7 @@ main {
   --page-col: #ffffff;
   --link-active: #4536DA;
   --link-book-active: #000000;
+  --tut-chapter-content: #E04747;
 
   --shiki-color-text: #FFFFFF;
   --shiki-color-background: var(--snippet);
@@ -183,6 +184,7 @@ main {
     --page-col: #151515;
     --link-active: #8F87E8;
     --link-book-active: #FFFFFF;
+    --tut-chapter-content: #ED9191;
 
     --shiki-color-text: #FFFFFF;
     --shiki-color-background: var(--snippet);
@@ -255,6 +257,7 @@ main {
   --page-col: #151515;
   --link-active: #8F87E8;
   --link-book-active: #FFFFFF;
+  --tut-chapter-content: #ED9191;
 
   --shiki-color-text: #FFFFFF;
   --shiki-color-background: var(--snippet);
@@ -469,6 +472,12 @@ i.fa-angle-right {
   flex-direction: column-reverse;
 }
 
+.tutorial-introduction{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
 .first-explore-row {
   position: relative;
   border: 1px solid #ffffff;
@@ -662,6 +671,19 @@ i.fa-angle-right {
   margin: auto;
   background-color: var(--explore-row);
   z-index: 1;
+}
+
+.diamond-shape-tut {
+  border: 1px solid #fff;
+  height: 32px;
+  text-align: center;
+  transform: rotate(45deg);
+  width: 32px;
+  margin: auto;
+  background-color: var(--tut-chapter-content);
+  z-index: 1;
+  position: absolute;
+  left: -1rem;
 }
 
 .item-count {
@@ -1036,6 +1058,21 @@ p.punch span {
   height: 100%;
 }
 
+.tut-card {
+}
+
+.tutorial-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  height: 100%;
+  box-sizing: content-box;
+  position: relative;
+  background-color: var(--card-section-footer);
+  color: var(--body-color);
+}
+
 .first-row-chapter {
   display: flex;
   flex-direction: row;
@@ -1057,11 +1094,29 @@ p.punch span {
   justify-content: space-between;
 }
 
+.tut-chapter-content{
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  color: var(--tut-chapter-content);
+}
+
+
 .next-chapter-content div{
   width: 80%;
 }
 
 .next-chapter-content div p{
+  font-size: 14px;
+}
+
+.tut-chapter-content div{
+  width: 80%;
+}
+
+.tut-chapter-content div p{
   font-size: 14px;
 }
 
@@ -1284,6 +1339,7 @@ iframe.gray-scale {
 #page-col div#hh-viewer pre.numbered .snippet li{
   counter-increment: counterName;
   position: relative;
+  color: var(--shiki-token-string-expression);
 }
 
 #page-col div#hh-viewer pre.numbered .snippet li::before {

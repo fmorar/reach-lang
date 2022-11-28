@@ -365,8 +365,9 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
   const nextChapterHtml = doc.createRange().createContextualFragment(nextChapterInfo[1]);
   const firstText = nextChapterHtml.querySelector("p")?.textContent
   const shortDescription = firstText ? firstText.length > 200 ? firstText.substring(0,200) + "..." : firstText.substring(0, firstText.length - 2) : "";
+  const excludedChapters=["reach-top", "tuts"]
  
-if (configJson.titleId !=="reach-top" && activeIndex + 1 !==  Array.from(doc.querySelectorAll('.chapter-title')).length){
+if (!excludedChapters.includes(configJson.titleId) && activeIndex + 1 !==  Array.from(doc.querySelectorAll('.chapter-title')).length){
   nextChapter.innerHTML +=`
   <section class="p-2 next-chapter-card">
     <a href="${doc.querySelectorAll('.chapter-title')[activeIndex + 1].href}">
