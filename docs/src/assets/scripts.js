@@ -195,13 +195,18 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
       el.addEventListener('click', (evt) => {
         const item = evt.target;
         const pages = item.closest('div.chapter').querySelector('div.pages');
-        if (item.classList.contains('closed')) {
-          item.classList.remove('closed');
-          item.classList.add('opened');
+        const marker = item.nextSibling
+        if (item.classList.contains('fa-diamond')) {
+          item.classList.remove('fa-diamond');
+          item.classList.add('fa-caret-down');
+          marker.classList.remove('closed');
+          marker.classList.add('opened');
           pages.style.display = 'block';
         } else {
-          item.classList.remove('opened');
-          item.classList.add('closed');
+          item.classList.remove('fa-caret-down');
+          item.classList.add('fa-diamond');
+          marker.classList.remove('opened');
+          marker.classList.add('closed');
           pages.style.display = 'none';
         }
       });
@@ -350,6 +355,10 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
     const pages = chapter && chapter.querySelector('div.pages');
     if (pages && pages.hasChildNodes()) {
       const icon = chapter.querySelector('i.chapter-icon');
+      const marker = icon.nextSibling
+      icon.classList.remove('fa-diamond');
+      icon.classList.add('fa-caret-down');
+      marker.classList.add('opened');
       pages.style.display = 'block';
     }
   }

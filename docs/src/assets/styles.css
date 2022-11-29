@@ -110,6 +110,7 @@ main {
   --link-active: #4536DA;
   --link-book-active: #000000;
   --tut-chapter-content: #E04747;
+  --chapter-markers: #666666;
 
   --shiki-color-text: #FFFFFF;
   --shiki-color-background: var(--snippet);
@@ -185,6 +186,7 @@ main {
     --link-active: #8F87E8;
     --link-book-active: #FFFFFF;
     --tut-chapter-content: #ED9191;
+    --chapter-markers: #F2F2F2;
 
     --shiki-color-text: #FFFFFF;
     --shiki-color-background: var(--snippet);
@@ -258,6 +260,7 @@ main {
   --link-active: #8F87E8;
   --link-book-active: #FFFFFF;
   --tut-chapter-content: #ED9191;
+  --chapter-markers: #F2F2F2;
 
   --shiki-color-text: #FFFFFF;
   --shiki-color-background: var(--snippet);
@@ -819,6 +822,28 @@ i.fa-angle-right {
 #book-col div.chapter-icon-col {
   padding-top: 2px;
   padding-right: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  align-content: center;
+}
+
+.fa-caret-down{
+  color: var(--link-active);
+}
+
+.fa-diamond{
+  font-size: 12px;
+  color: var(--chapter-markers);
+}
+
+.chapter-line-marker.opened{
+  height: 100%;
+  width: 0;
+  border: 0.5px solid;
+  margin: 6px 0;
+  opacity: 50%;
+  border-color: var(--chapter-markers);
 }
 
 #book-col div.chapter-empty-col {

@@ -854,7 +854,8 @@ const generateBook = async (destp, bookp) => {
       d.children.push(h('div', {class: "col-auto chapter-empty-col"}));
     } else {
       d.children.push(h('div', {class: "col-auto chapter-icon-col"}, [
-        h('i', {class: "chapter-icon fas fa-solid fa-diamond closed"})
+        h('i', {class: "chapter-icon fas fa-solid fa-diamond"}),
+        h('div', {class: "chapter-line-marker closed"})
       ]));
       cs.push(h('div', {class: "pages", style: "display:none"},
         hifyList(ctc)
