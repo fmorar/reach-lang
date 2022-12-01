@@ -300,7 +300,8 @@ em {
 
 button,
 a[role="button"]:not(.step) {
-  border-color: var(--button-border) !important;
+  border: none !important;
+  font-size: 20px !important;
   color: var(--button-color);
   padding: 0.25rem 0.5rem;
 }
@@ -427,6 +428,13 @@ i.fa-angle-right {
   justify-content: center;
 }
 
+.first-row div.started {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  justify-content: center;
+}
+
 #reach-top {
   font-family: "Reach Favorit";
   width: 141px;
@@ -498,6 +506,7 @@ i.fa-angle-right {
 
 .first-explore-row .mb-8 {
   margin-bottom: 5rem;
+  word-wrap: break-word;
 }
 
 .contribute-hover,
@@ -1706,10 +1715,6 @@ opacity: 50%; /* or background set to rgba(255, 255, 255, 0); */
 
   #book-col.display {
     display: block;
-  }
-
-  #page-col div.show-book-col {
-    display: none;
   }
 }
 

@@ -23,7 +23,7 @@
       <a href="/tut/#tuts">
         <div class="first-row">
           <img class="banner" src="../assets/img/read.svg" />
-          <div class="p-1">
+          <div class="started">
             <p class="learn" class="card-text mt-2">Learn Reach</p>
             <p class="learn-text" class="card-text mt-2">
               Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ipsum
@@ -38,7 +38,7 @@
       <a href="/quickstart/#quickstart">
         <div class="first-row build-connect">
           <img class="banner" src="../assets/img/use.svg" />
-          <div class="p-1">
+          <div class="started">
             <p class="use" class="card-text mt-2">Build with us</p>
             <p class="use-text" class="card-text mt-2">
               Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ipsum
@@ -53,7 +53,7 @@
       <a href="/tut/#tuts">
         <div class="first-row build-connect">
           <img class="banner" src="../assets/img/use.svg" />
-          <div class="p-1">
+          <div class="started">
             <p class="use" class="card-text mt-2">Connect to Reach Cloud</p>
             <p class="use-text" class="card-text mt-2">
               Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ipsum
