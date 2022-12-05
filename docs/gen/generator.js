@@ -796,10 +796,9 @@ const processMd = async ({baseConfig, relDir, in_folder, iPath, oPath}) => {
     if ( ! le ) { continue; }
     const lang = rt.slice(2, le);
     const rc = rt.slice(le+2);
-    const hc = await shikiHighlight(rc, lang);
     const s = doc.createElement('span');
     s.classList.add('snip');
-    s.appendChild(mkEl(hc));
+    s.appendChild(mkEl(rc));
     linkifySpans(s, lang);
     c.outerHTML = s.outerHTML;
   }

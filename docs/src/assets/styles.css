@@ -979,6 +979,14 @@ i.fas:hover {
   text-decoration: none;
 }
 
+.btn-toggle {
+  color: var(--body-color);
+}
+
+.btn-toggle:hover {
+  color: var(--link-no-hover);
+}
+
 #page-col span:hover.ui-tooltip {
   color: var(--reach-red-hover);
 }
@@ -1301,6 +1309,7 @@ iframe.gray-scale {
 }
 
 .codeHeader a:not(.copyBtn) {
+  font-family: "Reach Favorit", sans-serif;
   font-size: 16px;
   color: #ffffff !important;
 }
@@ -1349,7 +1358,7 @@ iframe.gray-scale {
 #page-col div#hh-viewer ol.snippet li {
   background-color: var(--snippet);
   /* github-light modified*/
-  font-family: var(--bs-font-monospace);
+  font-family: "Reach Favorit", sans-serif;
   color: var(--body-color);
   font-size: 95%;
   padding: 1px 12px;
@@ -1358,7 +1367,7 @@ iframe.gray-scale {
 }
 
 #page-col div#hh-viewer pre:not(.snippet) code {
-  font-family: var(--bs-font-monospace);
+  font-family: "Reach Favorit", sans-serif;;
   font-size: 90%;
 }
 
@@ -1371,27 +1380,14 @@ iframe.gray-scale {
 }
 
 #page-col div#hh-viewer pre.numbered .snippet li{
-  counter-increment: counterName;
   position: relative;
   color: var(--shiki-token-string-expression);
 }
 
-#page-col div#hh-viewer pre.numbered .snippet li::before {
-  position: absolute;
-  left: -10px;
-  content: counter(counterName);
-  color: #ffffff;
-}
-
 #page-col div#hh-viewer pre.numbered ol {
   padding-left: 3rem;
-  counter-reset: counterName;
 }
 
-#page-col div#hh-viewer pre.numbered ol li {
-  display: flex;
-  flex-wrap: wrap;
-}
 
 #page-col div#hh-viewer pre.numbered ol li span {
   color: var(--shiki-color-text);
@@ -1423,8 +1419,13 @@ iframe.gray-scale {
   white-space: pre;
   background-color: var(--snippet-inline);
   /* github-light modified*/
-  font-family: var(--bs-font-monospace);
-  color: var(--body-color);
+  font-family: "Reach Favorit", sans-serif;
+  color: var(--body-color) !important;
+}
+
+#page-col code,
+#page-col span.snip a span {
+  color: var(--body-color) !important;
 }
 
 /************************************************
@@ -1716,6 +1717,8 @@ opacity: 50%; /* or background set to rgba(255, 255, 255, 0); */
   #book-col.display {
     display: block;
   }
+
+  #page-col div.show-book-col {display: none;}
 }
 
 @media (max-width: 768px) {

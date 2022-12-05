@@ -83,18 +83,23 @@
       const brand = document.querySelector(".navbar-brand");
       const footer=document.querySelector(".footer")
       const search=document.querySelector(".search-bar .nav-link")
+      const searchIcon=document.getElementById("search-icon")
       if (classList.contains("day")) {
         classList.replace("day", "night");
         toggle.innerHTML = `<img src="/assets/img/sun.svg" alt="light mode">`;
         brand.innerHTML= `<img src="/assets/logo-dark.svg" alt="logo">`;
         footer.style.backgroundImage= `url("./assets/img/background-footer-repeat-dark.svg")`
-        search.innerHTML= `<img src="/assets/img/search-dark.svg" id="search-icon" alt="search bar">`;
+        if (!searchIcon.classList.contains("fa-search")) {
+          search.innerHTML= `<img src="/assets/img/search-dark.svg" id="search-icon" alt="search bar">`;
+        }
       } else if (classList.contains("night")) {
         classList.replace("night", "day");
         toggle.innerHTML = `<img src="/assets/img/moon.svg" alt="dark mode">`;
         brand.innerHTML= `<img src="/assets/logo-light.svg" alt="logo">`;
         footer.style.backgroundImage= `url("./assets/img/background-footer-repeat.svg")`
-        search.innerHTML= `<img src="/assets/img/search-light.svg" id="search-icon" alt="search bar">`;
+        if (!searchIcon.classList.contains("fa-search")) {
+          search.innerHTML= `<img src="/assets/img/search-light.svg" id="search-icon" alt="search bar">`;
+        }
       }
     };
   </script>
@@ -140,7 +145,7 @@
     <div id="book-col" class="col display" style="display:none;">
       <div id="toggle-icon" class="col-auto x-icon-col" style="float: right; display: flex;">
         <button
-          class="btn btn-outline-secondary btn-sm hide-book-icon"
+          class="btn btn-toggle btn-sm hide-book-icon"
           onclick="setItemToNone(event, 'book-col')"
         >
         <i class="fa-solid fa-angles-left"></i>
@@ -167,7 +172,7 @@
           <div class="row">
             <div class="col-auto show-book-col pe-0">
               <button
-                class="btn btn-outline-secondary btn-sm show-book-col"
+                class="btn btn-toggle btn-sm show-book-col"
                 onclick="setItemToBlock(event, 'book-col')"
               >
               <i class="fa-solid fa-angles-left"></i>
@@ -181,7 +186,7 @@
                   <div class="btn-group btn-group-sm" role="group" aria-label="">
                     <a id="edit-btn" class="btn btn-outline-secondary btn-sm"><i class="fas fa-pencil-alt"></i></a>
                     <button
-                      class="btn btn-outline-secondary btn-sm show-otp-col"
+                      class="btn btn-toggle btn-sm show-otp-col"
                       onclick="setItemToBlock(event, 'otp-col')"
                     >
                       <i class="fa-solid fa-angles-left"></i>
@@ -229,7 +234,7 @@
             <div class="col my-auto"><a href="#on-this-page" class="active otp-link">On This Page</a></div>
             <div class="col-auto my-auto">
               <button
-                class="btn btn-outline-secondary btn-sm hide-otp-icon"
+                class="btn btn-toggle btn-sm hide-otp-icon"
                 onclick="setItemToNone(event, 'otp-col')"
               >
               <i class="fa-solid fa-angles-right"></i>

@@ -409,7 +409,6 @@ if (!excludedChapters.includes(configJson.titleId) && activeIndex + 1 !==  Array
   // Display homepage styles.
   doc.querySelector('div#hh-page-header .col').style.display = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? 'block' : 'none' : 'none';
   doc.querySelector('div#hh-page-header').style.cssText = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '' : 'margin: 0;float:left;border:none' : 'margin: 0;float:left;border:none';
-  doc.querySelector('div.show-book-col').style.cssText = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '' : 'background-color:white;display:flex' : 'background-color:white;display:flex';
   doc.querySelector('#page-col').style.padding = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '16px 24px' : '16px 0 0 0' : '16px 0 0 0';
   doc.querySelector('#page-col').style.backgroundColor = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? 'var(--page-col)' : 'var(--light-mode-white)' : 'var(--page-col)';
   doc.querySelector('#page-col .footer').style.margin = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '0 -24px -16px -24px' : '0' : '0 -24px -16px -24px';
