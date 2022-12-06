@@ -10,7 +10,7 @@
     </p>
   </div>
 </div>
-<div class="container-sm g-3 mb-4">
+<div class="container-sm g-3 started">
   <p class="intro-title-text">
     Getting <span class="blue-bg-text">Started</span>
   </p>
@@ -23,7 +23,7 @@
       <a href="/tut/#tuts">
         <div class="first-row">
           <img class="banner" src="../assets/img/read.svg" />
-          <div class="started">
+          <div>
             <p class="learn" class="card-text mt-2">Learn Reach</p>
             <p class="learn-text" class="card-text mt-2">
               Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ipsum
@@ -38,7 +38,7 @@
       <a href="/quickstart/#quickstart">
         <div class="first-row build-connect">
           <img class="banner" src="../assets/img/use.svg" />
-          <div class="started">
+          <div>
             <p class="use" class="card-text mt-2">Build with us</p>
             <p class="use-text" class="card-text mt-2">
               Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ipsum
@@ -53,7 +53,7 @@
       <a href="/tut/#tuts">
         <div class="first-row build-connect">
           <img class="banner" src="../assets/img/use.svg" />
-          <div class="started">
+          <div>
             <p class="use" class="card-text mt-2">Connect to Reach Cloud</p>
             <p class="use-text" class="card-text mt-2">
               Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ipsum
@@ -208,7 +208,7 @@
   </div>
 </div>
 
-<div class="container-sm g-3 mb-4">
+<div class="container-sm g-3 support">
   <p class="intro-title-text">
     Help & <span class="light-blue-bg-text">Support</span>
   </p>
@@ -219,7 +219,7 @@
           <img class="banner" src="../assets/img/social.svg" />
           <svg xmlns="http://www.w3.org/2000/svg" class="img-fluid p-1 arrow" width="65" height="65" viewBox="0 0 65 65" fill="none"><path d="M21.4025 21.9783L21.4025 25.7506L36.3443 25.7639L20.0649 42.0434L22.7402 44.7187L39.0196 28.4393L39.033 43.381L42.8052 43.381L42.8052 21.9783L21.4025 21.9783Z" fill="currentColor"/></svg>
            <svg xmlns="http://www.w3.org/2000/svg" class="img-fluid p-1" width="94" height="68" viewBox="0 0 94 68" fill="none"><path d="M69.0674 67.9872C69.0674 67.9872 66.1828 64.5102 63.7873 61.459C74.2838 58.4929 78.2882 51.915 78.2882 51.915C75.404 53.8336 72.3133 55.4213 69.0745 56.648C65.3488 58.2439 61.4506 59.4012 57.4582 60.0966C50.5961 61.3631 43.5583 61.3366 36.706 60.0185C32.6822 59.2334 28.7391 58.079 24.9266 56.5699C22.9178 55.7963 20.9641 54.8859 19.0795 53.8451C18.8385 53.6819 18.5975 53.6038 18.3707 53.4406C18.2498 53.3817 18.1414 53.2998 18.0518 53.1994C16.6343 52.3975 15.8051 51.837 15.8051 51.837C15.8051 51.837 19.6536 58.2233 29.8241 61.3029C27.4002 64.347 24.4376 67.9872 24.4376 67.9872C6.7331 67.3982 0 55.7681 0 55.7681C0 29.9391 11.5384 8.99916 11.5384 8.99916C23.0768 0.335095 34.0553 0.576355 34.0553 0.576355L34.8562 1.54139C20.4332 5.71377 13.7781 12.0504 13.7781 12.0504C13.7781 12.0504 15.5428 11.0853 18.5054 9.72294C27.0812 5.95503 33.8923 4.91193 36.6989 4.67068C37.1465 4.574 37.6021 4.51936 38.0597 4.50747C43.4276 3.80885 48.8596 3.75407 54.2404 4.34426C62.6976 5.31699 70.8834 7.93474 78.3379 12.0504C78.3379 12.0504 72.03 6.03308 58.4079 1.86071L59.5348 0.576355C59.5348 0.576355 70.5062 0.335095 82.0446 8.99916C82.0446 8.99916 93.583 29.9391 93.583 55.7681C93.5547 55.7681 86.772 67.3982 69.0674 67.9872ZM31.8086 30.4997C27.2443 30.4997 23.6367 34.5088 23.6367 39.405C23.6367 44.3011 27.3222 48.3032 31.8086 48.3032C36.295 48.3032 39.9804 44.294 39.9804 39.405C39.9804 34.5159 36.3729 30.4997 31.8086 30.4997ZM61.0515 30.4997C56.4872 30.4997 52.8797 34.5088 52.8797 39.405C52.8797 44.3011 56.5651 48.3032 61.0515 48.3032C65.5379 48.3032 69.2234 44.294 69.2234 39.405C69.2234 34.5159 65.6229 30.4997 61.0515 30.4997Z" fill="currentColor"/></svg>
-          <div class="p-1 mt-4">
+          <div class="p-1">
             <p class="social" class="card-text mt-2">Join us</p>
             <p class="social-text" class="card-text mt-2">
               Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ipsum
@@ -235,7 +235,7 @@
           <img class="banner" src="../assets/img/social.svg" />
           <svg xmlns="http://www.w3.org/2000/svg" class="img-fluid p-1 arrow" width="65" height="65" viewBox="0 0 65 65" fill="none"><path d="M21.4025 21.9783L21.4025 25.7506L36.3443 25.7639L20.0649 42.0434L22.7402 44.7187L39.0196 28.4393L39.033 43.381L42.8052 43.381L42.8052 21.9783L21.4025 21.9783Z" fill="currentColor"/></svg>
           <svg xmlns="http://www.w3.org/2000/svg" class="img-fluid p-1" width="104" height="104" viewBox="0 0 104 104" fill="none"><g clip-path="url(#clip0_493_12303)"><path d="M69.3332 28.0422H14.3999C10.6232 28.0422 7.5332 31.1322 7.5332 34.9089V96.7089L21.2665 82.9756H69.3332C73.1099 82.9756 76.1999 79.8856 76.1999 76.1089V34.9089C76.1999 31.1322 73.1099 28.0422 69.3332 28.0422ZM69.3332 76.1089H21.2665L14.3999 82.9756V34.9089H69.3332V76.1089Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M93.3666 5.72559H52.1666C49.3341 5.72559 47.0166 8.04309 47.0166 10.8756V30.4456H73.7966V46.9256H88.2166L98.5166 57.2256V10.8756C98.5166 8.04309 96.1991 5.72559 93.3666 5.72559Z" fill="currentColor"/><rect x="25.6665" y="51.5757" width="6" height="6" fill="currentColor"/><rect x="37.6665" y="51.5757" width="6" height="6" fill="currentColor"/><rect x="49.6665" y="51.5757" width="6" height="6" fill="currentColor"/></g><defs><clipPath id="clip0_493_12303"><rect width="103" height="103" fill="currentColor" transform="translate(0.666504 0.575684)"/></clipPath></defs></svg>
-          <div class="p-1 mt-4">
+          <div class="p-1">
             <p class="social" class="card-text mt-2">Get Help</p>
             <p class="social-text" class="card-text mt-2">
               Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ipsum
@@ -251,7 +251,7 @@
           <img class="banner" src="../assets/img/use-white.svg" />
           <svg xmlns="http://www.w3.org/2000/svg" class="img-fluid p-1 arrow" width="65" height="65" viewBox="0 0 65 65" fill="none"><path d="M21.4025 21.9783L21.4025 25.7506L36.3443 25.7639L20.0649 42.0434L22.7402 44.7187L39.0196 28.4393L39.033 43.381L42.8052 43.381L42.8052 21.9783L21.4025 21.9783Z" fill="currentColor"/></svg>
           <svg xmlns="http://www.w3.org/2000/svg" class="img-fluid p-1" width="97" height="97" viewBox="0 0 97 97" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M48.3148 6.3357C38.0587 6.33965 28.1386 9.99254 20.3291 16.6409C12.5197 23.2892 7.33042 32.4992 5.68972 42.6233C4.04903 52.7473 6.06393 63.1248 11.374 71.8993C16.684 80.6737 24.9427 87.2727 34.6727 90.5156C36.8335 90.9096 37.6215 89.5737 37.6215 88.4348C37.6215 87.4067 37.5846 84.0023 37.5661 80.3948C25.5369 83.005 22.9759 75.2851 22.9759 75.2851C21.0121 70.2925 18.1802 68.9627 18.1802 68.9627C14.2587 66.2848 18.4757 66.3402 18.4757 66.3402C22.8158 66.6418 25.0998 70.7911 25.0998 70.7911C28.9474 77.3905 35.2021 75.4821 37.6646 74.3802C38.0524 71.5914 39.1729 69.683 40.4103 68.6057C30.8127 67.516 20.7104 63.81 20.7104 47.2621C20.6507 42.9681 22.2443 38.8155 25.1614 35.6638C24.712 34.5803 23.2345 30.1848 25.58 24.2379C25.58 24.2379 29.206 23.0744 37.4614 28.6642C44.5423 26.727 52.0135 26.727 59.0943 28.6642C67.3806 23.0867 70.9943 24.2502 70.9943 24.2502C73.3459 30.1971 71.8684 34.5927 71.419 35.6761C74.3371 38.8267 75.929 42.9806 75.8638 47.2744C75.8638 63.8592 65.7615 67.516 56.164 68.581C57.7153 69.9231 59.0943 72.5518 59.0943 76.5841C59.0943 82.3586 59.0451 87.0127 59.0451 88.4348C59.0451 89.586 59.8208 90.9342 62.0124 90.5094C71.7423 87.2617 79.999 80.6576 85.3049 71.8789C90.6109 63.1002 92.6199 52.7199 90.9723 42.5954C89.3248 32.471 84.1283 23.2632 76.3127 16.6198C68.497 9.97634 58.5724 6.33087 48.3148 6.3357Z" fill="currentColor"/></svg>
-          <div class="p-1 mt-4">
+          <div class="p-1">
             <p class="use-sm" class="card-text mt-2">Contribute</p>
             <p class="use-text-support" class="card-text mt-2">
               Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ipsum

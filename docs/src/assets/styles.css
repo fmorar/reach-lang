@@ -36,7 +36,7 @@ main {
 #page-col div#hh-viewer h4,
 #page-col div#hh-viewer h6,
 #page-col div#hh-viewer table {
-  margin-top: 16px;
+  margin-top: 25px;
   margin-bottom: 16px;
 }
 
@@ -97,9 +97,13 @@ main {
   --background-reach: #5c4ff0;
   --icon-hover: #6b5ee0;
   --explore: #e04747;
+  --explore-text: #e04747;
+  --explore-background: #ffffff;
   --explore-row: #e04747;
+  --explore-row-border: #ffffff;
   --explore-row-color-hover: #e04747;
   --explore-row-background-hover: #ffffff;
+  --support-background: #70A1D6;
   --light-mode-white-navbar: #f2f2f2;
   --footer: #ffffff;
   --book-col: #ffffff;
@@ -173,9 +177,13 @@ main {
     --card-section-footer: #333333;
     --icon-hover: #6b5ee0;
     --explore: #232323;
-    --explore-row: #999999;
+    --explore-text: #ffffff;
+    --explore-background: #AB3636;
+    --explore-row: #4B4B4B;
+    --explore-row-border: #999999;
     --explore-row-color-hover: #ffffff;
     --explore-row-background-hover: #ab3636;
+    --support-background: #0A305C;
     --light-mode-white-navbar: #f2f2f2;
     --footer: #2b2b2b;
     --book-col: #1e1e1e;
@@ -247,9 +255,13 @@ main {
   --card-section-footer: #333333;
   --icon-hover: #6b5ee0;
   --explore: #232323;
-  --explore-row: #999999;
+  --explore-text: #ffffff;
+  --explore-background: #AB3636;
+  --explore-row: #4B4B4B;
+  --explore-row-border: #999999;
   --explore-row-color-hover: #ffffff;
   --explore-row-background-hover: #ab3636;
+  --support-background: #0A305C;
   --light-mode-white-navbar: #f2f2f2;
   --footer: #2b2b2b;
   --book-col: #1e1e1e;
@@ -428,10 +440,10 @@ i.fa-angle-right {
   justify-content: center;
 }
 
-.first-row div.started {
+.first-row div {
   display: flex;
   flex-direction: column;
-  padding: 1rem;
+  padding: 0.25rem;
   justify-content: center;
 }
 
@@ -491,7 +503,7 @@ i.fa-angle-right {
 
 .first-explore-row {
   position: relative;
-  border: 1px solid #ffffff;
+  border: 1px solid var(--explore-row-border);
   background-color: var(--explore-row);
   height: 70%;
 }
@@ -795,6 +807,10 @@ i.fa-angle-right {
   border-right: 2.01842px solid #585858;
 }
 
+#book-col .chapter {
+  margin-top: 6px;
+}
+
 #book-col a.book-title,
 #book-col a.chapter-title {
   color: inherit;
@@ -812,7 +828,7 @@ i.fa-angle-right {
 }
 
 .first-bottom-chapter {
-  margin-top: 2rem;
+  margin-top: 42px;
 }
 
 #book-col a.book-title {
@@ -1074,6 +1090,11 @@ p.punch span {
   color: #ffffff;
 }
 
+.started,.support {
+  margin-top: 25px;
+  margin-bottom: 25px;
+}
+
 .footer {
   background-color: var(--footer);
   background-image: url("./img/background-footer-repeat.svg");
@@ -1175,15 +1196,15 @@ p.punch span {
 }
 
 .light-blue-bg-text {
-  background: #70a1d6;
+  background: var(--support-background);
   font-weight: 500;
   font-size: 40px;
   color: #ffffff;
 }
 
 .white-bg-text {
-  background: #ffffff;
-  color: var(--explore);
+  background: var(--explore-background);
+  color: var(--explore-text);
   font-weight: 500;
   font-size: 40px;
 }
