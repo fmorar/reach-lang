@@ -443,7 +443,7 @@ i.fa-angle-right {
 .first-row div {
   display: flex;
   flex-direction: column;
-  padding: 0.25rem;
+  padding: 0.5rem;
   justify-content: center;
 }
 
