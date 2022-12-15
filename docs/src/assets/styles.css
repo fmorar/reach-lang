@@ -963,8 +963,7 @@ i.fas:hover {
 #page-col div#hh-viewer h2 {
   color: var(--light-mode-black);
   font-weight: bold;
-  font-size: 20px;
-  border-bottom: 1px solid var(--soft1);
+  font-size: 34px;
   line-height: 2rem;
 }
 
@@ -1026,16 +1025,49 @@ i.fas:hover {
   padding: 0.5rem;
 }
 
-#page-col div#hh-viewer #qs-win-prereqs + ul {
+#page-col div#hh-viewer .diamondList ul {
+  list-style-type: none;
+  background-color: transparent;
+}
+
+#page-col div#hh-viewer .discList ul {
   list-style-type: disc;
   background-color: transparent;
 }
 
-#page-col div#hh-viewer #qs-win-prereqs + ul li {
+#page-col div#hh-viewer .diamondList ul li {
   background-color: transparent;
+  position: relative;
+  padding: 0.5rem 1rem;
+  margin-bottom: 0;
+  font-size: 1.25rem;
 }
 
-#page-col div#hh-viewer #qs-win-prereqs + ul li p {
+#page-col div#hh-viewer .discList ul li {
+  background-color: transparent;
+  position: relative;
+  padding: 0.5rem 1rem;
+  margin-bottom: 0;
+  font-size: 1.25rem;
+}
+
+#page-col div#hh-viewer .diamondList ul li::after {
+    content: '';
+    height: .4em;
+    width: .4em;
+    display: block;
+    position: absolute;
+    background-color: var(--soft1);
+    transform: rotate(45deg);
+    top: 1em;
+    left: 0;
+}
+
+#page-col div#hh-viewer .diamondList ul li p {
+  margin: 0;
+}
+
+#page-col div#hh-viewer .discList ul li p {
   margin: 0;
 }
 
@@ -1578,7 +1610,7 @@ div.social-icons a i {
 /* Notes */
 
 div.note {
-  background: var(--div-note-bg);
+  background: var(--list-background);
   margin-left: 2em;
   padding: 0em 0.5em;
 }

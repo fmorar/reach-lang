@@ -115,50 +115,51 @@ load: /examples/wisdom-1-starter/index.mjs
 md5: 77f7503ee58c2459f3793262212ca702
 range: 1-8
 ```
-
+:::diamondList
 * Line 1: Import the Reach JS Standard Library loader.
 * Line 2: Import the JS backend compiled from `index.rsh`.
 * Line 4: Hard-code the role. You will change this later.
 * Line 5: Display the role.
 * Line 7: Load the Reach JS Stdlib for the consensus network specified by `{!cmd} REACH_CONNECTOR_MODE` env var.
 * Line 8: Display the consensus network type.
+:::
 
 ``` js
 load: /examples/wisdom-1-starter/index.mjs
 md5: 77f7503ee58c2459f3793262212ca702
 range: 10-10
 ```
-
+:::diamondList
 * Line 10: Define an empty (for now) common interaction object.
-
+:::
 ``` js
 load: /examples/wisdom-1-starter/index.mjs
 md5: 77f7503ee58c2459f3793262212ca702
 range: 12-16
 ```
-
+:::diamondList
 * Line 13: Code for when you run this app as the `seller`.
 * Line 14: Define an empty (for now) Seller interaction object.
-
+:::
 ``` js
 load: /examples/wisdom-1-starter/index.mjs
 md5: 77f7503ee58c2459f3793262212ca702
 range: 18-20
 ```
-
+:::diamondList
 * Line 18: Create an account for the `seller`. `{!js} parseCurrency` transforms units from standard to atomic.
 * Line 19: Get a reference to the contract.
 * Line 20: Initiate interaction with contract for `seller`.
-
+:::
 ``` js
 load: /examples/wisdom-1-starter/index.mjs
 md5: 77f7503ee58c2459f3793262212ca702
 range: 22-28
 ```
-
+:::diamondList
 * Line 23: Code for when you run this app as the `buyer`.
 * Line 24 and 25: Define empty (for now) Buyer interaction object.
-
+:::
 ## {#wfs-12} Create the Backened
 
 Type the following into `index.rsh`:
@@ -168,22 +169,22 @@ load: /examples/wisdom-1-starter/index.rsh
 md5: 94716b0192ec5b060a7a9efb2d2ad292
 range: 1-9
 ```
-
+:::diamondList
 * Line 1: Instruction to the compiler.
 * Lines 3-9: Define empty (for now) participant interaction interface objects.
-
+:::
 ``` reach
 load: /examples/wisdom-1-starter/index.rsh
 md5: 94716b0192ec5b060a7a9efb2d2ad292
 range: 11-16
 ```
-
+:::diamondList
 * Line 11: Reach standard application initialization.
 * Line 12: Define a constant to represent the `seller`.
 * Line 13: Define a constant to represent the `buyer`.
 * Line 14: Finalize participant and other options, and proceed to a Reach step.
 * Line 16: Terminate computation.
-
+:::
 # {#wfs-13} Run the DApp
 
 Reach can currently compile the DApp to run on any of the following consensus network types:
