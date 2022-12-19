@@ -230,9 +230,10 @@ Here's what we did:
 load: /examples/workshop-hash-lock/index.rsh
 md5: 0e93e2215a2f36f5be42930a5705549f
 ```
-
+:::diamondList
 + Lines 11-14 have Alice declassify some of her values.
 + Line 21 has Bob provide his password.
+:::
 
 At this point, when we
 

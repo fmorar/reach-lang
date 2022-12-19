@@ -459,13 +459,14 @@ Follow these directions to have the `seller` deploy the contract and return the 
     md5: ce20f5ed8b89dd0d4671989972e692a9
     range: 16-23
     ```
-
+    :::diamondList
     * Line 16: `{!rsh} init` initializes the DApp, and transitions to a step.
     * Line 18: `{!rsh} S.only()` transitions to a local step in which `seller` gets `price`.
     * Line 19: `{!rsh} S.publish()` transitions to a consensus step.
     * Line 20: `{!rsh} S.interact` transitions to a local step in which `seller` passes `price` to frontend.
     * Line 21: `{!rsh} commit()` transitions to a step.
     * Line 23: `{!rsh} exit()` halts the contract forever.
+    :::
 
     The next section explains these functions in more detail.
     For now, know that Reach programs (the `index.rsh` portion of your Reach DApp) are organized into four modes, and that `{!rsh} init`, `{!rsh} only`, `{!rsh} publish`, `{!rsh} commit`, and `{!rsh} exit` cause mode transitions.

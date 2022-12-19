@@ -148,10 +148,11 @@ Let's look at our whole program now:
 load: /examples/workshop-trust-fund/index.rsh
 md5: 06f0fa99d67d1d07af76ca83a0c8db3e
 ```
-
+:::diamondList
 + Lines 33 and 34 use `{!rsh} each` to run the same code block `{!rsh} only` in each of the given participants.
 + Lines 51 through 59 abstract the duplicate copied repeated structure of the program into three calls to the same function.
 + Lines 37 through 49 define this function as one that abstracts over who is permitted to extract the funds and whether there is a deadline.
+:::
 
 This program demonstrates some of the remarkable features of Reach: we were able to abstract away a pattern of communication into a function and use it repeatedly and in different ways.
 Behind the scenes, when Reach compiles this program into a contract, it will derive a four step protocol with implicit state to check that the appropriate participant takes their action only when allowed.
