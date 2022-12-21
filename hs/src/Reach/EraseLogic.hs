@@ -55,8 +55,13 @@ instance Erase DLArg where
 instance Erase DLAssignment where
   el = viaCount
 
+instance {-# OVERLAPS #-} Erase a => Erase (SwitchCase a) where
+  el (SwitchCase {..}) = do
+    k' <- el sc_k
+    return $ SwitchCase sc_vl k'
+
 instance {-# OVERLAPS #-} Erase a => Erase (SwitchCases a) where
-  el = mapM (\(x, y, z) -> (,,) x y <$> el z)
+  el (SwitchCases m) = SwitchCases <$> mapM el m
 
 instance Erase DLStmt where
   el = \case
@@ -78,12 +83,12 @@ instance Erase DLStmt where
                 True -> keep
     DL_ArrayMap at ans x a i f -> do
       f' <- el f
-      isUsedv ans >>= \case
+      isUsed ans >>= \case
         False | isPure f' -> skip at
         _ -> DL_ArrayMap at ans <$> el x <*> pure a <*> pure i <*> pure f'
     DL_ArrayReduce at ans x z b a i f -> do
       f' <- el f
-      isUsedv ans >>= \case
+      isUsed ans >>= \case
         False | isPure f' -> skip at
         _ -> DL_ArrayReduce at ans <$> el x <*> el z <*> pure b <*> pure a <*> pure i <*> pure f'
     DL_Var at dv ->
@@ -97,11 +102,11 @@ instance Erase DLStmt where
     DL_LocalIf at mans c t f -> DL_LocalIf at mans <$> el c <*> el t <*> el f
     DL_LocalSwitch at ov csm -> DL_LocalSwitch at <$> el ov <*> el csm
     DL_Only at who b -> DL_Only at who <$> el b
-    DL_MapReduce at mri ans x z b a f -> do
+    DL_MapReduce at mri ans x z b k a f -> do
       f' <- el f
-      isUsedv ans >>= \case
+      isUsed ans >>= \case
         False | isPure f' -> skip at
-        _ -> DL_MapReduce at mri ans x <$> el z <*> pure b <*> pure a <*> pure f'
+        _ -> DL_MapReduce at mri ans x <$> el z <*> pure b <*> pure k <*> pure a <*> pure f'
     DL_LocalDo at mans t -> DL_LocalDo at mans <$> el t
     where
       skip at = return $ DL_Nop at

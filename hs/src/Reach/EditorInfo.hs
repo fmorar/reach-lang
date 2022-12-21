@@ -145,7 +145,7 @@ completionKind v =
         SLPrim_race -> Just CK_Function
         SLPrim_Map -> Just CK_TypeParameter
         SLPrim_Map_new -> Just CK_Method
-        SLPrim_Map_reduce -> Just CK_Function
+        SLPrim_Map_reduce _ -> Just CK_Function
         SLPrim_Participant -> Just CK_Constructor
         SLPrim_ParticipantClass -> Just CK_Constructor
         SLPrim_View -> Just CK_Constructor
@@ -192,6 +192,7 @@ completionKind v =
         SLPrim_toStringDyn -> Just CK_Function
         SLPrim_Bytes_fromHex -> Just CK_Method
         SLPrim_Contract_fromAddress -> Just CK_Method
+        SLPrim_ALGOBlockField {} -> Just CK_Function
     SLV_Form slf ->
       case slf of
         SLForm_App -> Just CK_Constructor

@@ -115,6 +115,7 @@ data Global = Global
   }
   deriving (Generic)
 
+instance ToJSONKey DLVal
 instance ToJSON Global
 
 data LocalInfo = LocalInfo
@@ -308,7 +309,7 @@ instance FromJSON Action
 
 type Account = Integer
 
-type LinearState = M.Map DLMVar (M.Map Account DLVal)
+type LinearState = M.Map DLMVar (M.Map DLVal DLVal)
 
 data DLVal
   = V_Null
@@ -331,19 +332,30 @@ data DLVal
 instance ToJSON DLVal
 instance FromJSON DLVal
 
-addToStore :: DLVar -> DLVal -> App ()
-addToStore x v = do
-  (_, l) <- getState
-  let locals = l_locals l
-  let aid = l_curr_actor_id l
-  case M.lookup aid locals of
-    Nothing -> do
-      void $ suspend $ PS_Error Nothing "addToStore: no local store"
-      return ()
-    Just lst -> do
-      let st = l_store lst
-      let lst' = lst {l_store = M.insert x v st}
-      setLocal $ l {l_locals = M.insert aid lst' locals}
+class AddToStore a where
+  addToStore :: a -> DLVal -> App ()
+
+instance AddToStore DLVar where
+  addToStore x v = do
+    (_, l) <- getState
+    let locals = l_locals l
+    let aid = l_curr_actor_id l
+    case M.lookup aid locals of
+      Nothing -> do
+        void $ suspend $ PS_Error Nothing "addToStore: no local store"
+        return ()
+      Just lst -> do
+        let st = l_store lst
+        let lst' = lst {l_store = M.insert x v st}
+        setLocal $ l {l_locals = M.insert aid lst' locals}
+
+instance AddToStore DLLetVar where
+  addToStore = \case
+    DLV_Eff -> const $ return ()
+    DLV_Let _ v -> addToStore v
+
+instance AddToStore DLVarLet where
+  addToStore (DLVarLet _ v) = addToStore v
 
 fixMessageInRecord :: PhaseId -> ActorId -> Store -> DLPayAmt -> Bool -> App ()
 fixMessageInRecord phId actId m_store m_pay m_api = do
@@ -476,26 +488,29 @@ conCons' = \case
   DLC_UInt_max  -> V_UInt $ 2 ^ (64 :: Integer) - 1
   DLC_Token_zero -> V_Token 0
 
+instance Interp DLVar where
+  interp dlvar = do
+    (_, l) <- getState
+    let locals = l_locals l
+    let aid = l_curr_actor_id l
+    case M.lookup aid locals of
+      Nothing -> suspend $ PS_Error Nothing $ "No local store found for actor ID: " <> show aid
+      Just lst -> do
+        let st = l_store lst
+        case M.lookup dlvar st of
+          Nothing -> do
+            suspend $ PS_Error Nothing $
+              "Missing local variable definition for: "
+                <> show dlvar
+                <> "\n in store: "
+                <> show st
+                <> "\n for actor: "
+                <> show (l_who lst)
+          Just a -> return a
+
 instance Interp DLArg where
   interp = \case
-    DLA_Var dlvar -> do
-      (_, l) <- getState
-      let locals = l_locals l
-      let aid = l_curr_actor_id l
-      case M.lookup aid locals of
-        Nothing -> suspend $ PS_Error Nothing $ "No local store found for actor ID: " <> show aid
-        Just lst -> do
-          let st = l_store lst
-          case M.lookup dlvar st of
-            Nothing -> do
-              suspend $ PS_Error Nothing $
-                "Missing local variable definition for: "
-                  <> show dlvar
-                  <> "\n in store: "
-                  <> show st
-                  <> "\n for actor: "
-                  <> show (l_who lst)
-            Just a -> return a
+    DLA_Var v -> interp v
     DLA_Constant dlconst -> return $ conCons' dlconst
     DLA_Literal dllit -> interp dllit
     DLA_Interact _slpart str _dltype -> do
@@ -628,20 +643,20 @@ instance Interp DLExpr where
         ev <- vUInt <$> interp dlarg
         suspend $ PS_Suspend (Just at) (A_AdvanceSeconds ev)
     DLE_PartSet _at _slpart dlarg -> interp dlarg
-    DLE_MapRef _at dlmvar dlarg -> do
+    DLE_MapRef _at dlmvar dlarg _ -> do
       (g, _) <- getState
       let linstate = e_linstate g
-      acc <- vAddress <$> interp dlarg
+      acc <- interp dlarg
       case M.lookup dlmvar linstate of
         Nothing -> return $ V_Data "None" V_Null
         Just m -> do
           case M.lookup acc m of
             Nothing -> return $ V_Data "None" V_Null
             Just m' -> return $ V_Data "Some" m'
-    DLE_MapSet _at dlmvar dlarg maybe_dlarg -> do
+    DLE_MapSet _at dlmvar dlarg _ maybe_dlarg -> do
       (e, _) <- getState
       let linst = e_linstate e
-      acc <- vAddress <$> interp dlarg
+      acc <- interp dlarg
       f <- case maybe_dlarg of
         Nothing -> return M.delete
         Just a -> do
@@ -713,14 +728,10 @@ instance Interp DLExpr where
 instance Interp DLStmt where
   interp = \case
     DL_Nop _at -> return V_Null
-    DL_Let _at let_var expr -> case let_var of
-      DLV_Eff -> do
-        void $ interp expr
-        return V_Null
-      DLV_Let _ var -> do
-        ev <- interp expr
-        addToStore var ev
-        return V_Null
+    DL_Let _at let_var expr -> do
+      ev <- interp expr
+      addToStore let_var ev
+      return V_Null
     DL_ArrayMap _at ans xs as i f -> do
       arrs' <- mapM vArray <$> mapM interp xs
       let f' avs iv = do
@@ -753,11 +764,7 @@ instance Interp DLStmt where
         V_Bool True -> interp tail1
         V_Bool False -> interp tail2
         _ -> impossible "DL_LocalIf: statement interpreter"
-    DL_LocalSwitch _at var cases -> do
-      (k, v) <- vData <$> interp (DLA_Var var)
-      let (switch_binding, _, dltail) = saferMaybe "DL_LocalSwitch" $ M.lookup k cases
-      addToStore switch_binding v
-      interp dltail
+    DL_LocalSwitch _at v csm -> interp $ SwitchCasesUse v csm
     DL_Only _at either_part dltail -> do
       case either_part of
         Left slpart -> do
@@ -779,18 +786,19 @@ instance Interp DLStmt where
                         Just _ -> interp dltail
             True -> interp dltail
         _ -> impossible "DL_Only: unexpected error (Right)"
-    DL_MapReduce _at _int var1 dlmvar arg var2 var3 block -> do
-      accu <- interp arg
+    DL_MapReduce _at _mri ans mv za blv klv alv fb -> do
+      acc <- interp za
       (g, _) <- getState
       let linst = e_linstate g
-      let f =
-            (\a x b y -> do
-               addToStore a x
-               addToStore b y
-               interp block)
-      let m = saferMaybe "DL_MapReduce" $ M.lookup dlmvar linst
-      res <- foldM (\x y -> f var2 x var3 y) accu $ m
-      addToStore var1 res
+      let f :: DLVal -> DLVal -> DLVal -> App DLVal
+          f k v acc' = do
+           addToStore blv acc'
+           addToStore klv k
+           addToStore alv v
+           interp fb
+      let m = saferMaybe "DL_MapReduce" $ M.lookup mv linst
+      res <- foldrWithKeyM f acc m
+      addToStore ans res
       return V_Null
 
 instance Interp DLTail where
@@ -806,6 +814,13 @@ instance Interp DLBlock where
       void $ interp dltail
       interp dlarg
 
+instance Interp k => Interp (SwitchCasesUse k) where
+  interp (SwitchCasesUse vv (SwitchCases csm)) = do
+    (k, v) <- vData <$> interp vv
+    let SwitchCase {..} = saferMaybe "Switch" $ M.lookup k csm
+    addToStore sc_vl v
+    interp sc_k
+
 instance Interp LLConsensus where
   interp = \case
     LLC_Com stmt cons -> do
@@ -817,11 +832,7 @@ instance Interp LLConsensus where
         V_Bool True -> interp cons1
         V_Bool False -> interp cons2
         _ -> impossible "consensus interpreter"
-    LLC_Switch _at var switch_cases -> do
-      (k, v) <- vData <$> interp (DLA_Var var)
-      let (switch_binding, _, cons) = saferMaybe "LLC_Switch" $ M.lookup k switch_cases
-      addToStore switch_binding v
-      interp cons
+    LLC_Switch _at v csm -> interp $ SwitchCasesUse v csm
     LLC_FromConsensus _at1 _at2 _fs step -> do
       incrNWtime 1
       incrNWsecs 1

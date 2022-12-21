@@ -380,14 +380,16 @@ be_m = \case
     fg_edge mdv de
     retb0 $ const $ return $ DL_Let at mdv de
   DL_ArrayMap at ans xs as i f -> do
-    fg_defn $ [ans] <> as <> [i]
+    fg_defn $ ans
+    fg_defn $ i : as
     fg_use xs
     be_bl f
       >>= retb
         (\f' ->
            return $ DL_ArrayMap at ans xs as i f')
   DL_ArrayReduce at ans xs z b as i f -> do
-    fg_defn $ [ans] <> as <> [b, i]
+    fg_defn $ ans
+    fg_defn $ b : i : as
     fg_use $ xs <> [z]
     be_bl f
       >>= retb
@@ -411,24 +413,25 @@ be_m = \case
       f'p
       (\t' f' ->
          return $ DL_LocalIf at mans c t' f')
-  DL_LocalSwitch at ov csm -> do
+  DL_LocalSwitch at ov (SwitchCases csm) -> do
     fg_use $ ov
-    let go (v, vu, k) = do
-          when vu $ fg_defn $ v
-          k'p <- be_t k
-          return $ (,,) v vu k'p
+    let go (SwitchCase {..}) = do
+          fg_defn sc_vl
+          k'p <- be_t sc_k
+          return $ SwitchCase sc_vl k'p
     csm' <- mapM go csm
-    let mkt f = (DL_LocalSwitch at ov <$> mapM f' csm')
+    let mkt f = (DL_LocalSwitch at ov <$> SwitchCases <$> mapM f' csm')
           where
-            f' (v, vu, k'p) = (,,) v vu <$> (f k'p)
+            f' (SwitchCase {..}) = SwitchCase sc_vl <$> f sc_k
     return $ (,) (mkt fst) (mkt snd)
-  DL_MapReduce at mri ans x z b a f -> do
-    fg_defn $ [ans, b, a]
+  DL_MapReduce at mri ans x z b k a f -> do
+    fg_defn $ ans
+    fg_defn $ [b, k, a]
     fg_use $ z
     be_bl f
       >>= retb
         (\f' ->
-           return $ DL_MapReduce at mri ans x z b a f')
+           return $ DL_MapReduce at mri ans x z b k a f')
   DL_Only at (Left who) l -> do
     ic <- be_inConsensus <$> ask
     l'l <- ee_t l
@@ -553,15 +556,15 @@ be_c = \case
     fg_use $ c
     let go mk t' f' = mk at c <$> t' <*> f'
     return $ (,) (go CT_If t'c f'c) (go ET_If t'l f'l)
-  LLC_Switch at ov csm -> do
+  LLC_Switch at ov (SwitchCases csm) -> do
     fg_use $ ov
-    let go (v, vu, k) = do
-          when vu $ fg_defn v
-          (k'c, k'l) <- be_c k
-          let wrap k' = (,,) v vu <$> k'
+    let go (SwitchCase {..}) = do
+          fg_defn sc_vl
+          (k'c, k'l) <- be_c sc_k
+          let wrap k' = SwitchCase sc_vl <$> k'
           return (wrap k'c, wrap k'l)
     csm' <- mapM go csm
-    return $ (,) (CT_Switch at ov <$> mapM fst csm') (ET_Switch at ov <$> mapM snd csm')
+    return $ (,) (CT_Switch at ov <$> SwitchCases <$> mapM fst csm') (ET_Switch at ov <$> SwitchCases <$> mapM snd csm')
   LLC_FromConsensus at1 _at2 fs s -> do
     this <- newSavePoint "fromConsensus"
     views <- asks be_views
@@ -591,7 +594,7 @@ be_c = \case
     let mkfrom_info do_read = do
           svs <- do_read this
           return $ case more of
-            True -> FI_Continue $ asnLike svs
+            True -> FI_Continue $ map (\v -> SvsPut v (DLA_Var v)) svs
             False -> FI_Halt toks
     fg_saves this
     let cm = CT_From at1 this <$> mkfrom_info ce_readSave
@@ -737,9 +740,8 @@ mk_eb (DLinExportBlock at vs (DLBlock bat sf ll a)) = do
 
 epp :: LLProg -> IO (PLProg EPProg CPProg)
 epp (LLProg {..}) = do
-  let LLOpts {..} = llp_opts
   -- Step 1: Analyze the program to compute basic blocks
-  let be_counter = llo_counter
+  let be_counter = getCounter llp_opts
   be_savec <- newCounter 1
   be_handlerc <- newCounter 0
   be_handlers <- newIORef mempty
@@ -792,8 +794,8 @@ epp (LLProg {..}) = do
   let cpp_apis = api_info
   let cpp_events = llp_events
   cpp_handlers <- CHandlers <$> mapM mkh hs
-  let cpo_untrustworthyMaps = llo_untrustworthyMaps
-  let cpo_counter = llo_counter
+  let cpo_counter = getCounter llp_opts
+  let cpo_aem = getALGOExitMode llp_opts
   let cpp_opts = CPOpts {..}
   let plp_cpp = CPProg {..}
   stateToSrcMap <- readIORef be_stateToSrcMap
@@ -820,8 +822,7 @@ epp (LLProg {..}) = do
         let ee_flow = flow
         ep_tail <- flip runReaderT (EEnv {..}) $ mkep_
         return $ EPart {..}
-  let epo_untrustworthyMaps = llo_untrustworthyMaps
-  let epo_counter = llo_counter
+  let epo_counter = getCounter llp_opts
   let epp_opts = EPOpts {..}
   let epp_init = llp_init
   let epp_exports = dex'

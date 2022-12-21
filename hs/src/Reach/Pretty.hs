@@ -30,12 +30,6 @@ prettyIf ca t f =
 prettyIfp :: Pretty c => Pretty e => c -> e -> e -> Doc
 prettyIfp ca t f = prettyIf ca (pretty t) (pretty f)
 
-prettySwitch :: (Pretty a, Pretty b, Pretty c, Pretty d, Pretty e) => a -> M.Map b (c, d, e) -> Doc
-prettySwitch ov csm =
-  "switch" <+> parens (pretty ov) <+> render_nest (concatWith (surround hardline) $ map render_p $ M.toList csm)
-  where
-    render_p (k, (vc, vd, ve)) = "case" <+> pretty k <+> "as" <+> pretty vc <> "/" <> pretty vd <> ":" <+> render_nest (pretty ve)
-
 prettyWhile :: (Pretty a, Pretty b, Pretty c) => a -> b -> c -> Doc -> Doc
 prettyWhile asn inv cond bodyp =
   "loopvar" <+> pretty asn <> semi <> hardline
@@ -54,7 +48,7 @@ prettyContinue cont_da =
 prettyStop :: Doc
 prettyStop = "exit" <> parens (emptyDoc) <> semi
 
-prettyMap :: (Pretty a, Pretty b, Pretty c, Pretty d) => a -> [b] -> [a] -> c -> d -> Doc
+prettyMap :: (Pretty a, Pretty b, Pretty c, Pretty d, Pretty e) => a -> [b] -> [e] -> c -> d -> Doc
 prettyMap ans xs as i f =
   "map" <+> pretty ans <+> "=" <+> "for" <+>
   parens (withCommas as <> pretty i <+> "in" <+> withCommas xs) <+> braces (nest $ hardline <> pretty f)

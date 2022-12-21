@@ -15,7 +15,7 @@ import Data.Version (Version (..), makeVersion, showVersion)
 import Reach.UnsafeUtil
 
 solcVersionStr :: String
-solcVersionStr = "0.8.16"
+solcVersionStr = "0.8.17"
 
 major :: Int
 major = 0
@@ -24,7 +24,7 @@ minor :: Int
 minor = 1
 
 patch :: Int
-patch = 12
+patch = 13
 
 version :: Version
 version = makeVersion [major, minor, patch]

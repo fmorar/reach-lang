@@ -61,7 +61,7 @@ instance Pretty ETail where
       ET_Com c k -> pretty c <> hardline <> pretty k
       ET_Stop _ -> emptyDoc
       ET_If _ ca t f -> prettyIfp ca t f
-      ET_Switch _ ov csm -> prettySwitch ov csm
+      ET_Switch _ ov csm -> pretty $ SwitchCasesUse ov csm
       ET_FromConsensus _ which msvs k ->
         "fromConsensus" <+> whichp <+> pretty msvs <+> semi
           <> hardline
@@ -129,16 +129,12 @@ instance Pretty EPart where
     pretty ep_interactEnv <> semi <> hardline <> pretty ep_tail
 
 data EPOpts = EPOpts
-  { epo_untrustworthyMaps :: Bool
-  , epo_counter :: Counter
+  { epo_counter :: Counter
   }
   deriving (Generic, Eq)
 
 instance HasCounter EPOpts where
   getCounter (EPOpts {..}) = epo_counter
-
-instance HasUntrustworthyMaps EPOpts where
-  getUntrustworthyMaps (EPOpts {..}) = epo_untrustworthyMaps
 
 type StateSrcMap = M.Map Int (SrcLoc, [SLCtxtFrame])
 

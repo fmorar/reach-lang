@@ -91,8 +91,8 @@ instance Countable v => Countable [v] where
 instance Countable v => Countable (M.Map k v) where
   counts m = counts $ M.elems m
 
-instance {-# OVERLAPS #-} Countable k => Countable (SwitchCases k) where
-  counts m = mconcat $ map (\(v, _, k) -> count_rms [v] $ counts k) $ M.elems m
+instance Countable k => Countable (SwitchCase k) where
+  counts (SwitchCase {..}) = count_rms [vl2v sc_vl] $ counts sc_k
 
 instance Countable DLVar where
   counts dv = Counts $ M.singleton dv DVC_Once
@@ -141,9 +141,8 @@ instance Countable DLRemoteALGOSTR where
     RA_Tuple t -> counts t
 
 instance Countable DLRemoteALGO where
-  counts (DLRemoteALGO a b c d e f g h i j k) =
-    counts a <> counts b <> counts c <> counts d <> counts e <> counts f <> counts g <> counts h <>
-    counts i <> counts j <> counts k
+  counts (DLRemoteALGO {..}) =
+    counts ra_fees <> counts ra_accounts <> counts ra_assets <> counts ra_addr2acc <> counts ra_apps <> counts ra_boxes <> counts ra_onCompletion <> counts ra_strictPay <> counts ra_rawCall <> counts ra_simNetRecv <> counts ra_simTokensRecv <> counts ra_simReturnVal
 
 instance Countable AS.Value where
   counts = const mempty
@@ -178,14 +177,14 @@ instance Countable DLExpr where
     DLE_CheckPay _ _ y z -> counts y <> counts z
     DLE_Wait _ a -> counts a
     DLE_PartSet _ _ a -> counts a
-    DLE_MapRef _ _ fa -> counts fa
-    DLE_MapSet _ _ fa na -> counts fa <> counts na
+    DLE_MapRef _ _ fa _ -> counts fa
+    DLE_MapSet _ _ fa _ na -> counts fa <> counts na
     DLE_Remote _ _ av _ dr -> counts av <> counts dr
     DLE_TokenNew _ tns -> counts tns
     DLE_TokenBurn _ tok amt -> counts [tok, amt]
     DLE_TokenDestroy _ tok -> counts tok
     DLE_TimeOrder _ _ a b -> counts a <> counts b
-    DLE_EmitLog _ _ a -> counts a
+    DLE_EmitLog _ _ a -> counts a <> counts a --- Count twice because ALGO internal duplicates v
     DLE_setApiDetails {} -> mempty
     DLE_GetUntrackedFunds _ mt tb -> counts mt <> counts tb
     DLE_DataTag _ d -> counts d
@@ -207,6 +206,9 @@ instance Countable DLPayAmt where
 instance Countable DLSend where
   counts (DLSend {..}) = counts ds_msg <> counts ds_pay <> counts ds_when
 
+instance Countable SvsPut where
+  counts (SvsPut {..}) = counts svsp_val
+
 instance Countable FromInfo where
   counts = \case
     FI_Continue svs -> counts svs
@@ -226,7 +228,7 @@ class CountableK a where
 
 instance CountableK FromInfo where
   countsk kcs = \case
-    FI_Continue svs -> count_rms (map fst svs) kcs
+    FI_Continue svs -> count_rms (map svsp_svs svs) kcs
     FI_Halt toks -> counts toks <> kcs
 
 instance CountableK DLTail where
@@ -240,23 +242,40 @@ instance Countable DLTail where
 instance CountableK DLLetVar where
   countsk kcs = \case
     DLV_Eff -> kcs
-    DLV_Let _ v -> count_rms [v] kcs
+    DLV_Let _ v -> countsk kcs (DLVarLet Nothing v)
+
+instance CountableK DLVarLet where
+  countsk kcs (DLVarLet _ v) = count_rms [v] kcs
+
+instance CountableK a => CountableK [a] where
+  countsk kcs = \case
+    [] -> kcs
+    x : xs -> countsk (countsk kcs x) xs
+
+instance Countable k => Countable (SwitchCases k) where
+  counts (SwitchCases m) = counts m
 
 instance CountableK DLStmt where
   countsk kcs = \case
     DL_Nop {} -> kcs
     DL_Let _ lv e -> countsk (counts e <> kcs) lv
     DL_ArrayMap _ ans xs as i f ->
-      count_rms (as <> [ans, i]) (counts f <> kcs) <> counts xs
+      counts xs
+      <> countsk (counts f) (i : as)
+      <> countsk kcs ans
     DL_ArrayReduce _ ans xs z b as i f ->
-      count_rms (as <> [ans, b, i]) (counts f <> kcs) <> counts (xs <> [z])
+      counts xs <> counts z
+      <> countsk (counts f) (b : i : as)
+      <> countsk kcs ans
     DL_Var _ v -> count_rms [v] kcs
     DL_Set _ v a -> counts v <> counts a <> kcs
     DL_LocalIf _ _ c t f -> counts c <> counts [t, f] <> kcs
     DL_LocalSwitch _ v csm -> counts v <> counts csm <> kcs
     DL_Only _ _ t -> countsk kcs t
-    DL_MapReduce _ _ ans _ z b a f ->
-      count_rms [ans, b, a] (counts f <> kcs) <> counts z
+    DL_MapReduce _ _ ans _ z b k a f ->
+      counts z
+      <> countsk (counts f) [b, k, a]
+      <> countsk kcs ans
     DL_LocalDo _ _ t -> countsk kcs t
 
 instance CountableK DLAssignment where

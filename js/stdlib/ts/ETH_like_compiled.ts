@@ -32,6 +32,9 @@ import {
   Stdlib_Backend_Base
 } from './interfaces';
 import {
+  defineSimStuff,
+} from './shared_sim';
+import {
   debug,
   labelMaps,
   MkPayAmt,
@@ -51,6 +54,8 @@ export type { // =>
 // Types
 export type Token = CBR_Address;
 export type PayAmt = MkPayAmt<Token>;
+export type ContractInfo = string;
+type ConnectorTy = AnyETH_Ty;
 
 // TODO: restore return type annotation once types are in place
 export function makeEthLikeCompiled(ethLikeCompiledArgs: EthLikeCompiledArgs) {
@@ -87,6 +92,7 @@ const T_Null: ETH_Ty<CBR_Null, false> = instEthTy({
   munge: (bv: CBR_Null): false => (void(bv), false),
   unmunge: (nv: false): CBR_Null => (void(nv), V_Null),
   paramType: 'bool',
+  isBaseType: true,
 });
 
 const T_Bool: ETH_Ty<CBR_Bool, boolean> = instEthTy({
@@ -94,6 +100,7 @@ const T_Bool: ETH_Ty<CBR_Bool, boolean> = instEthTy({
   munge: (bv: CBR_Bool): boolean => bv,
   unmunge: (nv: boolean): CBR_Bool => V_Bool(nv),
   paramType: 'bool',
+  isBaseType: true,
 });
 
 const V_Bool = (b: boolean): CBR_Bool => {
@@ -105,6 +112,7 @@ const T_UInt: ETH_Ty<CBR_UInt, BigNumber> = instEthTy({
   munge: (bv: CBR_UInt): BigNumber => bigNumberify(bv),
   unmunge: (nv: BigNumber): CBR_UInt => V_UInt(nv),
   paramType: 'uint256',
+  isBaseType: true,
 });
 
 const T_UInt256 = T_UInt;
@@ -143,6 +151,7 @@ type ETH_Bytes = Array<number> | Array<Array<number>>;
 const T_Bytes = (len:number): ETH_Ty<CBR_Bytes, ETH_Bytes> => {
   const me = {
     ...CBR.BT_Bytes(len),
+    isBaseType: len <= byteChunkSize,
     munge: ((bv: CBR_Bytes): ETH_Bytes => {
       const bs = Array.from(canonicalToBytes(bv));
       return (len <= byteChunkSize) ? bs : splitToChunks(bs, byteChunkSize);
@@ -176,6 +185,7 @@ type ETH_BytesDyn = Array<number>;
 const T_BytesDyn: ETH_Ty<CBR_Bytes, ETH_BytesDyn> = (() => {
   const me = {
     ...CBR.BT_BytesDyn,
+    isBaseType: true,
     munge: ((bv: CBR_Bytes): ETH_BytesDyn => {
       return Array.from(canonicalToBytes(bv));
     }),
@@ -192,6 +202,7 @@ type ETH_StringDyn = string;
 const T_StringDyn: ETH_Ty<CBR_Bytes, ETH_StringDyn> = (() => {
   const me = {
     ...CBR.BT_StringDyn,
+    isBaseType: true,
     munge: ((bv: CBR_Bytes): ETH_StringDyn => {
       return typeof bv == 'string' ? bv : ethers.utils.toUtf8String(bv);
     }),
@@ -205,6 +216,7 @@ const T_StringDyn: ETH_Ty<CBR_Bytes, ETH_StringDyn> = (() => {
 
 const T_Digest: ETH_Ty<CBR_Digest, BigNumber> = instEthTy({
   ...CBR.BT_Digest,
+  isBaseType: true,
   defaultValue: ethers.utils.keccak256([]),
   munge: (bv: CBR_Digest): BigNumber => ethers.BigNumber.from(bv),
   // XXX likely not the correct unmunge type?
@@ -222,6 +234,7 @@ const T_Array = <T>(
   const size = bigNumberToNumber(bigNumberify(size_i));
   return instEthTy({
     ...CBR.BT_Array(ctc, size),
+    isBaseType: false,
     munge: (bv: CBR_Array): any => {
       if ( size == 0 ) {
         return false;
@@ -252,6 +265,7 @@ const T_Tuple = <T>(
   ctcs: Array<ETH_Ty<CBR_Val, T>>,
 ): ETH_Ty<CBR_Tuple, Array<T>> => instEthTy({
   ...CBR.BT_Tuple(ctcs),
+  isBaseType: false,
   munge: (bv: CBR_Tuple): any => {
     if (ctcs.length == 0 ) {
       return false;
@@ -275,6 +289,7 @@ const T_Struct = <T>(
   ctcs: Array<[string, ETH_Ty<CBR_Val, T>]>,
 ): ETH_Ty<CBR_Struct, Array<T>> => instEthTy({
   ...CBR.BT_Struct(ctcs),
+  isBaseType: false,
   munge: (bv: CBR_Struct): any => {
     if (ctcs.length == 0 ) {
       return false;
@@ -298,6 +313,7 @@ const T_Object = <T>(
   co: {[key: string]: ETH_Ty<CBR_Val, T>}
 ): ETH_Ty<CBR_Object, {[key: string]: T}> => instEthTy({
   ...CBR.BT_Object(co),
+  isBaseType: false,
   // CBR -> Net . ETH object fields are prefaced with "_"
   munge: (bv: CBR_Object): any => {
     const obj: {
@@ -353,6 +369,7 @@ const T_Data = <T>(
     // where labelInt : number, 0 <= labelInt < N
     // vN : co[ascLabels[i]]
     //
+    isBaseType: false,
     munge: ([label, v]: CBR_Data): Array<T> => {
       const i = labelMap[label];
       const vals = ascLabels.map((label) => {
@@ -435,8 +452,9 @@ const arith: Arith = makeArith(UInt_max);
 
 const emptyContractInfo = "0x00000000000000000000000000000000";
 
-const stdlib: Stdlib_Backend_Base<AnyETH_Ty> = {
+const stdlib: Stdlib_Backend_Base<Token, ContractInfo, ConnectorTy> = {
   ...shared_backend,
+  ...defineSimStuff<Token, ContractInfo, ConnectorTy>(),
   ...arith,
   ...typeDefs,
   addressEq,

@@ -97,7 +97,7 @@ const stdlib = loadStdlib(process.env);
 Alternatively, you can construct a custom object that has all of the environment keys and fields you need.
 Each network supports different keys; see @{seclink("ref-networks")} for details.
 
-As a special case, you may instead pass in the string `'ETH'`, `'ALGO'`, or `'CFX'`,
+As a special case, you may instead pass in the string `'ETH'` or `'ALGO'`,
 to select the desired connector directly.
 
 ---
@@ -118,10 +118,19 @@ Calling this function will lift the restriction that
 # {#ref-frontends-js-provider} Provider Selection
 
 The first thing you should do in a frontend is decide if you need to specify a provider.
+This process works differently in the browser than in console (or "automated") contexts.
 
----
+## {#ref-frontends-wallets} Providers in Browsers via Wallets
 
-If you are building a browser-based DApp, then you may need to set up a fallback for users that do not have a wallet.
+By default, in browsers, Reach will automatically attach to a standards-conforming wallet, which is a connector-specific concept:
+- On Ethereum, MetaMask is used as the standard.
+- On Algorand, [ARC-0011](https://github.com/algorandfoundation/ARCs/blob/main/ARCs/arc-0011.md) is used as the standard.
+
+However, in your user does not have a standards-conforming wallet, then you can set up a fallback for them.
+
+:::note
+As of late 2022, almost no Algorand users have ARC-0011 wallets, so you should almost certainly use this function!
+:::
 
 @{ref("js", "stdlib.setWalletFallback")}
 ```js
@@ -130,10 +139,7 @@ stdlib.setWalletFallback(make: () => wallet): void
 
 When you call this function, if no browser wallet is available, then `{!js} make` will be called to construct one and it will be installed as if there were always a browser wallet.
 
-The value that `{!js} make` should return differs between connectors:
-- On Ethereum, it must match the interface of MetaMask.
-- On Conflux, it must match the interface of ConfluxPortal.
-- On Algorand, it must match the [ARC-0011](https://github.com/algorandfoundation/ARCs/blob/main/ARCs/arc-0011.md) standard.
+The value that `{!js} make` should conform to the connector-specific standard (mentioned above).
 
 ---
 
@@ -190,7 +196,7 @@ stdlib.walletFallback(opts: object): () => wallet
 This function returns a value that may be passed to `{!js} setWalletFallback` to synthesize a wallet for use in browsers that do not supply a compliant wallet.
 Its customization options, `{!js} opts`, depend on the connector.
 
-On Ethereum and Conflux, it always errors and cannot provide a wallet.
+On Ethereum, it always errors and cannot provide a wallet.
 
 On Algorand, it can provide a wallet that directly connects to the Algorand network, like `{!js} setProviderByName` (& `{!js} setProviderByEnv`), but provide interactive signing.
 The network connection is specified via the `providerEnv` key, which may be a string (which is used as an argument to `{!js} providerEnvByName`) or an environment (which is used as an argument to `{!js} setProviderByEnv`).
@@ -202,10 +208,10 @@ But, other fallbacks can be synthesized by providing special arguments in `opts`
 
 ---
 
-If the key `MyAlgoConnect` is provided, and bound to the `ALGO_MyAlgoConnect` export of `@reach-sh/stdlib`, then [MyAlgo](https://wallet.myalgo.com/home) will be used for signing.
+If the key `MyAlgoConnect` is provided, and bound to the default export of `@randlabs/myalgo-connect`, then [MyAlgo](https://wallet.myalgo.com/home) will be used for signing.
 For example, this sets the wallet fallback to be MyAlgo used with Algorand TestNet:
 ```js
-import { ALGO_MyAlgoConnect as MyAlgoConnect } from '@reach-sh/stdlib';
+import MyAlgoConnect from '@randlabs/myalgo-connect';
 stdlib.setWalletFallback(stdlib.walletFallback({
   providerEnv: 'TestNet', MyAlgoConnect }));
 ```
@@ -220,12 +226,14 @@ stdlib.setWalletFallback(reach.walletFallback({
 
 ---
 
-If the key `WalletConnect` is provided, and bound to the `ALGO_WalletConnect` export of `@reach-sh/stdlib`, then [WalletConnect](https://walletconnect.com/) is used to connect to the [PeraWallet](https://perawallet.app/) for signing.
+If the key `WalletConnect` is provided, and bound to the result of calling the `ALGO_MakeWalletConnect` export of `@reach-sh/stdlib` on the default exports of `@walletconnect/client` and `algorand-walletconnect-qrcode-modal`, then [WalletConnect](https://walletconnect.com/) is used to connect to the [PeraWallet](https://perawallet.app/) for signing.
 For example, this sets the wallet fallback to be WalletConnect and the Algorand TestNet:
 ```js
-import { ALGO_WalletConnect as WalletConnect } from '@reach-sh/stdlib';
+import WalletConnect from "@walletconnect/client";
+import QRCodeModal from "algorand-walletconnect-qrcode-modal";
+import { ALGO_MakeWalletConnect as MakeWalletConnect } from '@reach-sh/stdlib';
 stdlib.setWalletFallback(stdlib.walletFallback({
-  providerEnv: 'TestNet', WalletConnect }));
+  providerEnv: 'TestNet', WalletConnect: MakeWalletConnect(WalletConnect, QRCodeModal) }));
 ```
 
 Alternatively, you can call the `ALGO_MakePeraConnect` export of `@reach-sh/stdlib`, with `PeraWalletConnect` from `@perawallet/connect`, then PeraConnect is used to connect to the [PeraWallet](https://perawallet.app/) for signing.
@@ -249,7 +257,7 @@ Because these are fallbacks, you need to decide for your users which wallet they
 Please refer to the [`algo-wallet-demo`](https://github.com/reach-sh/reach-lang/tree/master/examples/algo-wallet-demo) example to see a full walkthrough of using wallet fallbacks and all their options.
 :::
 
----
+## {#ref-frontends-providers-raw} Providers not using Wallets
 
 If you are not building a browser-based DApp, you may want to set the network provider by using a standard name or using environment variables:
 
@@ -403,6 +411,10 @@ The `{!js} algodClient` and `{!js} indexer` values are as specified by the [Algo
 The `{!js} algod_bc` and `{!js} indexer_bc` are objects that represent HTTP connections to those values.
 The `{!js} signAndPostTxns` function obeys [ARC-0008](https://github.com/reach-sh/ARCs/blob/reach-wallet/ARCs/arc-0008.md).
 
+:::note
+Technically, this function can be used (and IS used) to attach wallets to Reach, but for practical purposes, you don't need to know this.
+:::
+
 ---
 @{ref("js", "getProvider")}
 ```js
@@ -457,7 +469,7 @@ Example:
 
 ```js
 load: /examples/signingMonitor/index.mjs
-md5: ba025829c65235bef3ceddc4a5f0c150
+md5: ece025d27cb8cf50d1d49b3f95ef6251
 range: 5-7
 ```
 
@@ -486,7 +498,7 @@ Example:
 
 ```js
 load: /examples/rsvp/index.js
-md5: ac7d3caae5994352ef4cf445515730ab
+md5: 4628bdec158b0fd8665780f0cee5c2ff
 range: 28-28
 ```
 
@@ -524,7 +536,7 @@ Example:
 
 ```js
 load: /examples/minBalance/index.mjs
-md5: 3c4457da0579671f1455423d0b44016b
+md5: 9067c7f9d752275e700f99272b4f65e5
 range: 15-15
 ```
 
@@ -579,7 +591,7 @@ Example:
 
 ```js
 load: /examples/minBalance/index.mjs
-md5: 3c4457da0579671f1455423d0b44016b
+md5: 9067c7f9d752275e700f99272b4f65e5
 range: 16 - 16
 ```
 
@@ -798,7 +810,7 @@ Example:
 
 ```js
 load: examples/raffle/index.mjs
-md5: 69477201beedc87b2616001290ae29cf
+md5: 6116688a82a5e00bc9bad44a100bebf4
 range: 10-10
 ```
 
@@ -870,7 +882,7 @@ range: 24-25
 
 This transfers one (1) unit of the network token from Alice's account `accAlice`, to Bob's account `accBob`.
 
-## {#ref-frontends-js-acc-eth} EVM-specific (Ethereum and Conflux)
+## {#ref-frontends-js-acc-eth} EVM-specific (Ethereum)
 
 When connected to an EVM-based consensus network, the standard library provides additional functionality.
 
@@ -897,23 +909,6 @@ range: 30-32
 
 Here, there is a `{!js} myGasLimit` object created, which is set to `{!js} 5000000`.
 This is then applied to both the `{!js} accAlice` and `{!js} accBob` by using the `{!js} setGasLimit` method so that the maximum gas cost is set for each account.
-
-## {#ref-frontends-js-acc-cfx} Conflux-specific
-
-When connected to the Conflux consensus network, the standard library provides additional functionality.
-
----
-@{ref("js", "setStorageLimit")}
-```js
-acc.setStorageLimit(n) => void
-```
-
-Modifies the storage limit for each transaction originating from the given account for the rest of the program.
-`{!js} n` must be a value that `{!js} bigNumberify` will accept.
-
-On the Conflux consensus networks, the Reach standard library will automatically use a storage limit of 2024 to execute transactions, i.e. make publications.
-Storage fees are refunded once the storage space is no longer used by the contract.
-The `{!js} setStorageLimit` function allows you to choose a different storage limit, as you see fit.
 
 # {#ref-frontends-js-ctc} Creating a Contract Handle
 
@@ -1372,6 +1367,25 @@ Sets the maximum width of the query windows used to query the network for event 
 The value `{!js} true` indicates that no window size should be used, and queries may span arbitrarily large window sizes.
 While each connector has a default value that works for most common cases, tweaking this setting may be useful when dealing with layer two networks or custom endpoints that are more restrictive than normal nodes on the network.
 
+---
+@{ref("js", "stdlib.setAdjustTxnParams")}
+```js
+load: /examples/algoBlock/index.mjs
+md5: a6608b32ad31db4ee3cd7e72c941f733
+range: 7-23
+```
+
+This function, which is available only on the Algorand connector, allows you to adjust the transaction parameters that Reach uses when it creates and signs transactions.
+
+It accepts a function that takes three arguments:
+1. `who`: a `{!js} T_Address` value of the sender;
+1. `sra`: an unstable and undocumented object that may help you identify the transaction being created;
+1. `params`: the base Algorand transaction parameters.
+
+It must return a new Algorand transaction parameter object.
+
+This is mostly useful for using `{!rsh} ALGO.blockSeed`, so you can adjust the transaction validity, like in the example above.
+
 # {#ref-frontends-js-utils} Utilities
 
 The standard library provides a number of utilities functions for interacting with JavaScript representations of Reach values.
@@ -1785,7 +1799,7 @@ Example:
 
 ```js
 load: /examples/map-tuple-key/index.mjs
-md5: cd5c8b278ef9f5ee40c13627cb23889e
+md5: 23726b81f3cd8f4d7fc2b94783bb7794
 range: 34 - 36
 ```
 

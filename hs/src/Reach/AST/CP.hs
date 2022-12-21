@@ -30,7 +30,7 @@ instance Pretty CTail where
   pretty = \case
     CT_Com e k -> pretty e <> hardline <> pretty k
     CT_If _ ca tt ft -> prettyIfp ca tt ft
-    CT_Switch _ ov csm -> prettySwitch ov csm
+    CT_Switch _ ov csm -> pretty $ SwitchCasesUse ov csm
     CT_From _ which fi -> pform "from" $ pretty which <> "," <+> pretty fi
     CT_Jump _ which vars assignment -> pform "jump!" args
       where
@@ -92,16 +92,16 @@ instance Pretty CHandlers where
     render_obj m
 
 data CPOpts = CPOpts
-  { cpo_untrustworthyMaps :: Bool
-  , cpo_counter :: Counter
+  { cpo_counter :: Counter
+  , cpo_aem :: ALGOExitMode
   }
   deriving (Generic, Eq)
 
 instance HasCounter CPOpts where
-  getCounter (CPOpts {..}) = cpo_counter
+  getCounter = cpo_counter
 
-instance HasUntrustworthyMaps CPOpts where
-  getUntrustworthyMaps (CPOpts {..}) = cpo_untrustworthyMaps
+instance HasALGOExitMode CPOpts where
+  getALGOExitMode = cpo_aem
 
 data CPProg = CPProg
   { cpp_at :: SrcLoc

@@ -21,6 +21,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Sequence as Seq
 import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Data.Text.Lazy.IO as LTIO
 import Reach.AST.Base
 import Reach.AST.DLBase
 import Reach.AST.LL
@@ -30,6 +31,7 @@ import Reach.Connector
 import Reach.Counter
 import Reach.EmbeddedFiles
 import Reach.Freshen
+import Reach.OutputUtil
 import Reach.Pretty
 import Reach.Texty
 import Reach.UnrollLoops
@@ -84,10 +86,15 @@ smtApply :: String -> [SExpr] -> SExpr
 smtApply f args = List (Atom f : args)
 
 smtAndAll :: [SExpr] -> SExpr
-smtAndAll = \case
-  [] -> Atom "true"
-  [x] -> x
-  xs -> smtApply "and" xs
+smtAndAll ys =
+  case filter (not . isTrue) ys of
+    [] -> Atom "true"
+    [x] -> x
+    xs -> smtApply "and" xs
+  where
+    isTrue = \case
+      Atom "true" -> True
+      _ -> False
 
 smtOrAll :: [SExpr] -> SExpr
 smtOrAll = \case
@@ -108,7 +115,7 @@ smtImplies :: SExpr -> SExpr -> SExpr
 smtImplies x y = smtApply "=>" [x, y]
 
 smtAnd :: SExpr -> SExpr -> SExpr
-smtAnd x y = smtApply "and" [x, y]
+smtAnd l r = smtAndAll [l, r]
 
 --- SMT conversion code
 
@@ -154,14 +161,15 @@ data SMTMapRecordReduce = SMR_Reduce
   , smr_ans :: DLVar
   , smr_z :: DLArg
   , smr_b :: DLVar
+  , smr_k :: DLVar
   , smr_a :: DLVar
   , smr_f :: DLBlock
   }
 
 instance Pretty SMTMapRecordReduce where
   pretty = \case
-    SMR_Reduce _mri ans z b a f ->
-      prettyReduce ans ("map" :: String) z b a () f
+    SMR_Reduce _mri ans z b k a f ->
+      prettyReduce ans ("map" :: String) z b a k f
 
 data SMTMapRecordUpdate
   = SMR_Update SExpr SExpr SExpr SMTMapRecordUpdate
@@ -177,7 +185,6 @@ instance Pretty SMTMapRecordUpdate where
 
 data SMTCtxt = SMTCtxt
   { ctxt_smt :: Solver
-  , ctxt_untrustworthyMaps :: Bool
   , ctxt_idx :: Counter
   , ctxt_smt_con :: SrcLoc -> DLConstant -> SExpr
   , ctxt_typem :: SMTTypeMap
@@ -362,6 +369,7 @@ smtPrimOp at p dargs =
     GET_CONTRACT -> impossible "GET_CONTRACT"
     GET_ADDRESS -> impossible "GET_ADDRESS"
     GET_COMPANION -> impossible "GET_COMPANION"
+    ALGO_BLOCK _ -> impossible "ALGO_BLOCK"
   where
     app n = return . smtApply n
     bvapp n_bv n_i = app $ if use_bitvectors then n_bv else n_i
@@ -930,18 +938,21 @@ smt_freshen x vs = do
   c <- ctxt_idx <$> ask
   liftIO $ freshen_ c x vs
 
-smtMapReduceApply :: SrcLoc -> DLVar -> DLVar -> DLBlock -> App (SExpr, SExpr, App SExpr)
-smtMapReduceApply at b a f = do
-  (f', b_f, a_f) <-
-    smt_freshen f [b, a] >>= \case
-      (f', [b_f, a_f]) -> return (f', b_f, a_f)
+smtMapReduceApply :: SrcLoc -> DLVar -> DLVar -> DLVar -> DLBlock -> App (SExpr, SExpr, SExpr, App SExpr)
+smtMapReduceApply at b k a f = do
+  (f', b_f, k_f, a_f) <-
+    smt_freshen f [b, k, a] >>= \case
+      (f', [b_f, k_f, a_f]) -> return (f', b_f, k_f, a_f)
       _ -> impossible "smt_freshen bad"
-  b' <- smt_v at b_f
-  pathAddUnbound at (Just b_f) $ Just $ SMTModel O_ReduceVar
-  a' <- smt_v at a_f
-  pathAddUnbound at (Just a_f) $ Just $ SMTModel O_ReduceVar
+  let go x_f = do
+        x' <- smt_v at x_f
+        pathAddUnbound at (Just x_f) $ Just $ SMTModel O_ReduceVar
+        return x'
+  b' <- go b_f
+  k' <- go k_f
+  a' <- go a_f
   let call_f' = smt_block f'
-  return $ (b', a', call_f')
+  return $ (b', k', a', call_f')
 
 smtMapReviewRecordRef :: SrcLoc -> DLMVar -> SExpr -> DLVar -> App ()
 smtMapReviewRecordRef at x fse res = do
@@ -962,15 +973,15 @@ smtMapReviewRecordRef at x fse res = do
   rs <- smtMapReviewRecord x sm_rs
   res' <- smt_v at res
   add_us_constraints $
-    forM_ rs $ \(SMR_Reduce _ ans _ b a f) -> do
+    forM_ rs $ \(SMR_Reduce _ ans _ b k a f) -> do
       ans' <- smt_v at ans
-      (_, a', f') <- smtMapReduceApply at b a f
+      (_, _k', a', f') <- smtMapReduceApply at b k a f
       smtAssertCtxt $ smtEq a' res'
       fres' <- f'
       smtAssertCtxt $ smtEq ans' fres'
 
-smtMapReviewRecordReduce :: SrcLoc -> Int -> DLVar -> DLMVar -> DLArg -> DLVar -> DLVar -> DLBlock -> App ()
-smtMapReviewRecordReduce at mri ans x z b a f = do
+smtMapReviewRecordReduce :: SrcLoc -> Int -> DLVar -> DLMVar -> DLArg -> DLVar -> DLVar -> DLVar -> DLBlock -> App ()
+smtMapReviewRecordReduce at mri ans x z b k a f = do
   z' <- smt_a at z
   (me_rs, other_rs) <- List.partition ((==) mri . smr_mri) <$> smtMapReviewRecord x sm_rs
   let go_fresh ans_x (SMR_Reduce {..}) = do
@@ -994,15 +1005,16 @@ smtMapReviewRecordReduce at mri ans x z b a f = do
         -- same, because the elements are definitely the same and the final
         -- value is the same as the accumulators
         let varTypeEq v0 v1 = ((==) (varType v0) (varType v1))
-        when ((varTypeEq b smr_b) && (varTypeEq a smr_a)) $ do
-          (b_x, a_x, mkf_x) <- smtMapReduceApply at b a f
-          (b_y, a_y, mkf_y) <- smtMapReduceApply at smr_b smr_a smr_f
+        when ((varTypeEq b smr_b) && (varTypeEq k smr_k) && (varTypeEq a smr_a)) $ do
+          (b_x, k_x, a_x, mkf_x) <- smtMapReduceApply at b k a f
+          (b_y, k_y, a_y, mkf_y) <- smtMapReduceApply at smr_b smr_k smr_a smr_f
           f_x <- mkf_x
           f_y <- mkf_y
           let z_x = z'
           z_y <- smt_a at smr_z
           ans_y <- smt_v at smr_ans
           smtAssert $ smtEq b_x b_y
+          smtAssert $ smtEq k_x k_y
           smtAssert $ smtEq a_x a_y
           smtAssert $ smtImplies (smtAnd (smtEq z_x z_y) (smtEq f_x f_y)) (smtEq ans_x ans_y)
   let go = \case
@@ -1026,14 +1038,16 @@ smtMapReviewRecordReduce at mri ans x z b a f = do
           -- of the reduction function back to the last known value, which is
           -- either z in the beginning or the last value
           z'0 <- go prev
-          (b'0, a'0, f'0) <- smtMapReduceApply at b a f
+          (b'0, k'0, a'0, f'0) <- smtMapReduceApply at b k a f
+          smtAssertCtxt $ smtEq k'0 fa'
           smtAssertCtxt $ smtEq a'0 $ smtApply "select" [ma, fa']
           fres'0 <- f'0
           smtAssertCtxt $ smtEq fres'0 z'0
           -- n f( Z0, m[fa] ) = z'
           -- u f( Z0, na' ) = z''
-          (b'1, a'1, f'1) <- smtMapReduceApply at b a f
+          (b'1, k'1, a'1, f'1) <- smtMapReduceApply at b k a f
           smtAssertCtxt $ smtEq b'1 b'0
+          smtAssertCtxt $ smtEq k'1 fa'
           smtAssertCtxt $ smtEq a'1 na'
           f'1
   z'' <- go =<< smtMapReviewRecord x sm_us
@@ -1110,6 +1124,7 @@ smt_e at_dv mdv de = do
         GET_CONTRACT -> unbound at
         GET_ADDRESS -> unbound at
         GET_COMPANION -> unbound at
+        ALGO_BLOCK _ -> unbound at
         _ -> do
           let f = case cp of
                 SELF_ADDRESS {} -> \se -> pathAddBound at mdv (Just $ SMTProgram de) se Witness
@@ -1203,14 +1218,14 @@ smt_e at_dv mdv de = do
           smtAssertCtxt (smtEq psv' (Atom $ smtAddress who))
         _ ->
           mempty
-    DLE_MapRef at mpv fa -> do
+    DLE_MapRef at mpv fa _ -> do
       (ma, mapDv) <- smtMapLookup mpv
       fa' <- smt_a at fa
       let se = smtApply "select" [ma, fa']
       let smte = Just . SMTSynth . flip SMTMapRef fa =<< mapDv
       pathAddBound at mdv smte se Context
       forM_ mdv $ smtMapReviewRecordRef at mpv fa'
-    DLE_MapSet at mpv fa mna ->
+    DLE_MapSet at mpv fa _ mna ->
       smtMapUpdate at mpv fa mna
     DLE_Remote at _ _ _ _ -> unbound at
     DLE_TokenNew at _ -> unbound at
@@ -1275,14 +1290,16 @@ data SwitchMode
   | SM_Consensus
 
 smtSwitch :: SwitchMode -> SrcLoc -> DLVar -> SwitchCases a -> (a -> App ()) -> App ()
-smtSwitch sm at ov csm iter = do
+smtSwitch sm at ov (SwitchCases csm) iter = do
   let ova = DLA_Var ov
   let ovt = argTypeOf ova
   let ovtm = case ovt of
         T_Data m -> m
         _ -> impossible "switch"
   ovp <- smt_a at ova
-  let cm1 (vn, (ov', _, l)) = do
+  let cm1 (vn, (SwitchCase {..})) = do
+        let ov' = varLetVar sc_vl
+        let l = sc_k
         let smte = SMTModel $ O_SwitchCase $ DLA_Var ov
         ov'p <- smt_la at $ DLLA_Data ovtm vn $ DLA_Var ov'
         let eqc = smtEq ovp ov'p
@@ -1323,14 +1340,20 @@ smt_m = \case
     with_t (smt_l t) <> with_f (smt_l f)
   DL_LocalSwitch at ov csm ->
     smtSwitch SM_Local at ov csm smt_l
-  DL_MapReduce at mri ans x z b a f -> do
-    pathAddUnbound at (Just ans) $ Just $ SMTModel O_ReduceVar
-    (ctxt_inv_mode <$> ask) >>= \case
-      B_Assume _ -> do
-        smtMapRecordReduce x $ SMR_Reduce mri ans z b a f
-      B_Prove _ ->
-        smtMapReviewRecordReduce at mri ans x z b a f
-      _ -> impossible $ "Map.reduce outside invariant"
+  DL_MapReduce at mri ans_lv x z b' k' a' f -> do
+    case ans_lv of
+      DLV_Eff -> return ()
+      DLV_Let _ ans -> do
+        let b = vl2v b'
+        let k = vl2v k'
+        let a = vl2v a'
+        pathAddUnbound at (Just ans) $ Just $ SMTModel O_ReduceVar
+        (ctxt_inv_mode <$> ask) >>= \case
+          B_Assume _ -> do
+            smtMapRecordReduce x $ SMR_Reduce mri ans z b k a f
+          B_Prove _ ->
+            smtMapReviewRecordReduce at mri ans x z b k a f
+          _ -> impossible $ "Map.reduce outside invariant"
   DL_Only _at (Left who) loc -> smt_lm who loc
   DL_Only {} -> impossible $ "right only before EPP"
   DL_LocalDo _ _ t -> smt_l t
@@ -1428,9 +1451,7 @@ smt_n = \case
     mapM_ (ctxtNewScope . go) [(True, t), (False, f)]
   LLC_Switch at ov csm ->
     smtSwitch SM_Consensus at ov csm smt_n
-  LLC_FromConsensus at _ _ s -> do
-    um <- asks ctxt_untrustworthyMaps
-    when um $ smtMapRefresh at
+  LLC_FromConsensus _ _ _ s -> do
     smt_s s
   LLC_While at asn invs cond body k ->
     mapM_ ctxtNewScope [before_m, loop_m, after_m]
@@ -1734,7 +1755,6 @@ _verify_smt mc ctxt_vst smt lp = do
   let ctxt_modem = Nothing
   let ctxt_smt = smt
   let ctxt_idx = llo_counter
-  let ctxt_untrustworthyMaps = llo_untrustworthyMaps
   let ctxt_pay_amt = Nothing
   ctxt_smt_trace <- newIORef mempty
   ctxt_map_vars <- newIORef mempty
@@ -1828,6 +1848,22 @@ seqPop = \case
   (Seq.:|>) x _ -> x
   _ -> impossible $ "empty seq"
 
+type SortRes = (Seq.Seq SExpr, SExpr)
+ssSort :: Seq.Seq (Seq.Seq SExpr) -> SortRes
+ssSort raw = (ds, a)
+  where
+    a = List [ Atom "assert", ae ]
+    (ds, ae) = foldr go (mempty, Atom "true") raw
+    go :: Seq.Seq SExpr -> SortRes -> SortRes
+    go ss r = foldr go' r ss
+    go' :: SExpr -> SortRes -> SortRes
+    go' s (ds', a') =
+      case s of
+        List [ Atom "assert", x ] ->
+          (ds', smtAnd x a')
+        _ ->
+          ((Seq.<|) s ds', a')
+
 newSolverSet :: VerifyOpts -> String -> [String] -> (String -> IO (IO (), Maybe Logger)) -> IO Solver
 newSolverSet (VerifyOpts {..}) p a mkl = do
   let short_a = Atom $ "10"
@@ -1866,9 +1902,11 @@ newSolverSet (VerifyOpts {..}) p a mkl = do
           tc (reachCheckUsing short_a) >>= \case
             Atom "unknown" -> do
               sn <- incCounter subc
-              ss <- readIORef rib
+              ssRaw <- readIORef rib
+              let (ssDefs, ssAssert) = ssSort ssRaw
               let doSS f = do
-                    traverse_ (traverse_ f) ss
+                    mapM_ f ssDefs
+                    void $ f ssAssert
                     f (reachCheckUsing long_a)
               hr <- newIORef $ crc32 ("" :: B.ByteString)
               doSS $ \s -> do
@@ -1906,16 +1944,16 @@ newSolverSet (VerifyOpts {..}) p a mkl = do
 verify_smt :: VerifySt -> LLProg -> String -> [String] -> IO ExitCode
 verify_smt vst lp prog args = do
   let vo@VerifyOpts {..} = vst_vo vst
-  let logpMay = ($ "smt") <$> vo_out
+  let vo_out' = wrapOutput "smt" vo_out
   ulp <- unrollLoops lp
-  case logpMay of
-    Nothing -> return ()
-    Just x -> writeFile (x <> ".ulp") (show $ pretty ulp)
-  let mkLogger t = case fmap (<> t) logpMay of
-        Just logp -> do
-          (close, logpl) <- newFileLogger logp
-          return (close, Just logpl)
-        Nothing -> return (return (), Nothing)
+  mayOutput (vo_out' False ".ulp") $ flip LTIO.writeFile $ render $ pretty ulp
+  let mkLogger t = do
+        let (shouldWrite, logp) = vo_out' False $ T.pack t
+        case shouldWrite of
+          False -> return (return (), Nothing)
+          True -> do
+            (close, logpl) <- newFileLogger logp
+            return (close, Just logpl)
   smt <- newSolverSet vo prog args mkLogger
   --unlessM (SMT.produceUnsatCores smt) $
   --  impossible "Prover doesn't support possible?"

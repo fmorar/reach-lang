@@ -33,13 +33,10 @@ getLoop w = do
 djs :: Subst a => AppT a
 djs x = flip subst_ x . e_rho <$> ask
 
-djs_asnLike :: AppT [(DLVar, DLArg)]
-djs_asnLike = mapM $ \(v, a) -> (,) v <$> djs a
-
 djs_fi :: AppT FromInfo
 djs_fi = \case
   FI_Halt toks -> FI_Halt <$> mapM djs toks
-  FI_Continue svs -> FI_Continue <$> djs_asnLike svs
+  FI_Continue svs -> FI_Continue <$> djs svs
 
 class DeJump a where
   dj :: AppT a
@@ -48,7 +45,10 @@ instance (Subst b, DeJump a) => DeJump (M.Map k (b, a)) where
   dj = mapM (\(x, y) -> (,) <$> djs x <*> dj y)
 
 instance (DeJump a) => DeJump (SwitchCases a) where
-  dj = mapM (\(v, vnu, k) -> (,,) v vnu <$> dj k)
+  dj (SwitchCases m) = SwitchCases <$> mapM dj m
+
+instance DeJump a => DeJump (SwitchCase a) where
+  dj (SwitchCase {..}) = SwitchCase sc_vl <$> dj sc_k
 
 instance DeJump CTail where
   dj = \case

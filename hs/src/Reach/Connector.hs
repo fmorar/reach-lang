@@ -2,6 +2,7 @@ module Reach.Connector
   ( ConnectorName
   , ConnectorObject
   , ConnectorInfo
+  , ConGenConfig (..)
   , Connector (..)
   , Connectors
   , checkIntLiteral
@@ -27,18 +28,24 @@ import Generics.Deriving hiding (conName)
 import Reach.AST.Base
 import Reach.AST.DLBase
 import Reach.AST.CL
+import Reach.InterferenceGraph
 import Reach.Texty
 import Reach.Util
+import Reach.OutputUtil
 import System.Directory
 
 type ConnectorObject = M.Map ConnectorName Value
 
 type ConnectorInfo = Value
 
+data ConGenConfig = ConGenConfig
+  { cgOutput :: Outputer
+  }
+
 data Connector = Connector
   { conName :: ConnectorName
   , conCons :: DLConstant -> DLLiteral
-  , conGen :: Maybe (T.Text -> String) -> CLProg -> IO ConnectorInfo
+  , conGen :: ConGenConfig -> IGd CLProg -> IO ConnectorInfo
   , conReserved :: SLVar -> Bool
   , conCompileCode :: Value -> IO (Either String Value)
   , conContractNewOpts :: Maybe Value -> Either String Value

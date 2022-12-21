@@ -71,8 +71,8 @@ instance Pandemic DLExpr where
     DLE_CheckPay at cxt a mtok -> DLE_CheckPay at cxt <$> pan a <*> pan mtok
     DLE_Wait at a -> DLE_Wait at <$> pan a
     DLE_PartSet at slp a -> DLE_PartSet at slp <$> pan a
-    DLE_MapRef at mv a -> DLE_MapRef at mv <$> pan a
-    DLE_MapSet at mv a marg -> DLE_MapSet at mv <$> pan a <*> pan marg
+    DLE_MapRef at mv a vt -> DLE_MapRef at mv <$> pan a <*> pan vt
+    DLE_MapSet at mv a vt marg -> DLE_MapSet at mv <$> pan a <*> pan vt <*> pan marg
     DLE_Remote at cxt a ty dr -> DLE_Remote at cxt <$> pan a <*> pan ty <*> pan dr
     DLE_TokenNew at tns -> DLE_TokenNew at <$> pan tns
     DLE_TokenBurn at tok amt -> DLE_TokenBurn at <$> pan tok <*> pan amt
@@ -101,6 +101,9 @@ instance Pandemic DLLetVar where
     DLV_Eff -> return DLV_Eff
     DLV_Let vc v -> DLV_Let vc <$> pan v
 
+instance Pandemic DLVarLet where
+  pan (DLVarLet mvc v) = DLVarLet mvc <$> pan v
+
 instance Pandemic DLSBlock where
   pan (DLSBlock at cxt sts a) = DLSBlock at cxt <$> pan sts <*> pan a
 
@@ -120,9 +123,8 @@ instance Pandemic DLRemoteALGOSTR where
     RA_Tuple t -> RA_Tuple <$> pan t
 
 instance Pandemic DLRemoteALGO where
-  pan (DLRemoteALGO a b c d e f g h i j k) =
-    DLRemoteALGO <$> pan a <*> pan b <*> pan c <*> pan d <*> pan e <*> pan f <*> pan g <*> pan h <*>
-                     pan i <*> pan j <*> pan k
+  pan (DLRemoteALGO {..}) =
+    DLRemoteALGO <$> pan ra_fees <*> pan ra_accounts <*> pan ra_assets <*> pan ra_addr2acc <*> pan ra_apps <*> pan ra_boxes <*> pan ra_onCompletion <*> pan ra_strictPay <*> pan ra_rawCall <*> pan ra_simNetRecv <*> pan ra_simTokensRecv <*> pan ra_simReturnVal <*> pan ra_txnOrderForward
 
 instance Pandemic DLPayAmt where
   pan (DLPayAmt net ks) = do
@@ -177,6 +179,12 @@ instance Pandemic a => Pandemic (DLRecv a) where
 instance Pandemic a => Pandemic (DLInvariant a) where
   pan (DLInvariant inv lab) = DLInvariant <$> pan inv <*> pure lab
 
+instance Pandemic a => Pandemic (SwitchCase a) where
+  pan (SwitchCase {..}) = SwitchCase <$> pan sc_vl <*> pan sc_k
+
+instance Pandemic a => Pandemic (SwitchCases a) where
+  pan (SwitchCases m) = SwitchCases <$> pan m
+
 instance Pandemic DLSStmt where
   pan = \case
     DLS_Let at v e -> do
@@ -194,13 +202,11 @@ instance Pandemic DLSStmt where
     DLS_Only at sl sts -> DLS_Only at sl <$> pan sts
     DLS_ToConsensus at s r m -> DLS_ToConsensus at <$> pan s <*> pan r <*> pan m
     DLS_FromConsensus at cxt sts -> DLS_FromConsensus at cxt <$> pan sts
-    DLS_While at agn bl1 bl2 sts -> do
-      DLS_While at <$> pan agn <*> pan bl1 <*> pan bl2 <*> pan sts
+    DLS_While at agn bl1 bl2 sts -> DLS_While at <$> pan agn <*> pan bl1 <*> pan bl2 <*> pan sts
     DLS_Continue at agn -> DLS_Continue at <$> pan agn
     DLS_FluidSet at flv a -> DLS_FluidSet at flv <$> pan a
     DLS_FluidRef at v flv -> DLS_FluidRef at <$> pan v <*> pure flv
-    DLS_MapReduce at i v1 mv a v2 v3 bl -> do
-      DLS_MapReduce at i <$> pan v1 <*> pure mv <*> pan a <*> pan v2 <*> pan v3 <*> pan bl
+    DLS_MapReduce at i v1 mv a v2 v3 v4 bl -> DLS_MapReduce at i <$> pan v1 <*> pure mv <*> pan a <*> pan v2 <*> pan v3 <*> pan v4 <*> pan bl
     DLS_Throw at a b -> DLS_Throw at <$> pan a <*> pure b
     DLS_Try at sts1 v sts2 -> DLS_Try at <$> pan sts1 <*> pan v <*> pan sts2
     DLS_ViewIs at sl1 sl2 expo -> return $ DLS_ViewIs at sl1 sl2 expo

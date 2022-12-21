@@ -1,4 +1,4 @@
-module Reach.AddCounts (add_counts, add_counts_sim, AC (..), ac_vdef, ac_visit, ac_vls) where
+module Reach.AddCounts (add_counts, add_counts_sim, AC (..), ac_vdef, ac_visit) where
 
 import Control.Monad.Reader
 import Data.IORef
@@ -9,6 +9,7 @@ import Reach.AST.DLBase
 import Reach.AST.LL
 import Reach.AST.PL
 import Reach.AST.EP
+import Reach.AST.CL
 import Reach.AST.CP
 import Reach.CollectCounts
 import Reach.AnalyzeVars
@@ -52,13 +53,10 @@ ac_vdef okToDupe (DLV_Let _ v) = do
       let lc' = if okToDupe then lc else DVC_Many
       return $ DLV_Let lc' v
 
-ac_vl :: AppT DLVarLet
-ac_vl (DLVarLet _ v) = do
-  mvc <- ac_getCount v
-  return $ DLVarLet mvc v
-
-ac_vls :: AppT [DLVarLet]
-ac_vls = mapM ac_vl
+instance AC DLVarLet where
+  ac (DLVarLet _ v) = do
+    mvc <- ac_getCount v
+    return $ DLVarLet mvc v
 
 instance (AC a, Traversable t) => AC (t a) where
   ac = mapM ac
@@ -110,21 +108,23 @@ instance AC DLStmt where
           ac_visit $ de
           return $ DL_Let at x' de
     DL_ArrayMap at ans xs as i f -> do
-      count <- ac_getCount ans
-      case (count, isPure f) of
-        (Nothing, True) -> skip at
+      ans' <- ac_vdef False ans
+      let p = isPure f
+      case (p, ans') of
+        (True, DLV_Eff) -> skip at
         _ -> do
           f' <- ac f
           ac_visit $ xs
-          return $ DL_ArrayMap at ans xs as i f'
+          return $ DL_ArrayMap at ans' xs as i f'
     DL_ArrayReduce at ans xs z b as i f -> do
-      count <- ac_getCount ans
-      case (count, isPure f) of
-        (Nothing, True) -> skip at
+      ans' <- ac_vdef False ans
+      let p = isPure f
+      case (p, ans') of
+        (True, DLV_Eff) -> skip at
         _ -> do
           f' <- ac f
           ac_visit $ xs <> [z]
-          return $ DL_ArrayReduce at ans xs z b as i f'
+          return $ DL_ArrayReduce at ans' xs z b as i f'
     DL_Var at dv ->
       ac_getCount dv >>= \case
         Nothing -> skip at
@@ -140,18 +140,15 @@ instance AC DLStmt where
       t' <- ac t
       ac_visit $ c
       return $ DL_LocalIf at mans c t' f'
-    DL_LocalSwitch at ov csm -> do
-      csm' <- ac csm
-      ac_visit $ ov
-      return $ DL_LocalSwitch at ov csm'
+    DL_LocalSwitch at ov csm -> doSwitch DL_LocalSwitch at ov csm
     DL_Only at who b -> do
       b' <- ac b
       return $ DL_Only at who b'
-    DL_MapReduce at mri ans x z b a f -> do
+    DL_MapReduce at mri ans x z b k a f -> do
       -- XXX remove if ans not used
       f' <- ac f
       ac_visit $ z
-      return $ DL_MapReduce at mri ans x z b a f'
+      return $ DL_MapReduce at mri ans x z b k a f'
     DL_LocalDo at mans t -> DL_LocalDo at mans <$> ac t
     where
       skip at = return $ DL_Nop at
@@ -170,14 +167,21 @@ instance AC DLBlock where
     t' <- ac t
     return $ DLBlock at fs t' a
 
-instance {-# OVERLAPS #-} AC a => AC (SwitchCases a) where
-  ac = mapM $ \(v, _, k) -> do
-    k' <- ac k
-    vu' <-
-      ac_vdef True (DLV_Let DVC_Many v) >>= \case
-        DLV_Eff -> return False
-        _ -> return True
-    return $ (v, vu', k')
+instance {-# OVERLAPS #-} AC a => AC (SwitchCaseUse a) where
+  ac (SwitchCaseUse ov vn (SwitchCase {..})) = do
+    k' <- ac sc_k
+    vl' <- ac sc_vl
+    case vl' of
+      -- If we use it, then we must get the data from ov
+      DLVarLet (Just _) _ -> ac_visit ov
+      _ -> return ()
+    return $ SwitchCaseUse ov vn (SwitchCase vl' k')
+
+doSwitch :: AC k => (SrcLoc -> DLVar -> SwitchCases k -> a) -> SrcLoc -> DLVar -> SwitchCases k -> App a
+doSwitch mk at v csm = do
+  csm' <- unSwitchUses <$> ac (switchUses v csm)
+  ac_visit v
+  return $ mk at v csm'
 
 instance AC ETail where
   ac = \case
@@ -191,10 +195,7 @@ instance AC ETail where
       t' <- ac t
       ac_visit $ c
       return $ ET_If at c t' f'
-    ET_Switch at v csm -> do
-      csm' <- ac csm
-      ac_visit v
-      return $ ET_Switch at v csm'
+    ET_Switch at v csm -> doSwitch ET_Switch at v csm
     ET_FromConsensus at vi fi k -> do
       k' <- ac k
       ac_visit fi
@@ -242,6 +243,25 @@ condBlock c =
         dt = dtList at (vs <> [c'])
         k' = dtReplace CT_Com k (dtList at ms'')
 
+instance AC SvsPut where
+  ac (SvsPut s v) = do
+    v' <- ac v
+    s' <- ac s
+    return $ SvsPut s' v'
+
+instance AC SvsGet where
+  ac (SvsGet s v) = do
+    v' <- ac v
+    s' <- ac s
+    return $ SvsGet s' v'
+
+instance AC FromInfo where
+  ac fi = do
+    case fi of
+      FI_Halt toks -> ac_visit toks
+      FI_Continue svs -> ac_visit svs
+    return fi
+
 instance AC CTail where
   ac = \case
     CT_Com m k -> do
@@ -265,13 +285,10 @@ instance AC CTail where
       t' <- ac t
       ac_visit $ c
       return $ CT_If at c t' f'
-    CT_Switch at v csm -> do
-      csm' <- ac csm
-      ac_visit $ v
-      return $ CT_Switch at v csm'
+    CT_Switch at v csm -> doSwitch CT_Switch at v csm
     CT_From at w fi -> do
-      ac_visit $ fi
-      return $ CT_From at w fi
+      fi' <- ac fi
+      return $ CT_From at w fi'
     CT_Jump at which svs asn -> do
       ac_visit $ svs
       ac_visit $ asn
@@ -281,26 +298,25 @@ instance AC CHandler where
   ac = \case
     C_Loop {..} -> fresh $ do
       body' <- ac cl_body
-      svs' <- ac_vls cl_svs
-      vars' <- ac_vls cl_vars
+      svs' <- ac cl_svs
+      vars' <- ac cl_vars
       return $ C_Loop cl_at svs' vars' body'
     C_Handler {..} -> fresh $ do
       body' <- ac ch_body
       ac_visit ch_int
       ac_visit ch_from
-      svs' <- ac_vls ch_svs
-      msg' <- ac_vls ch_msg
+      svs' <- ac ch_svs
+      msg' <- ac ch_msg
       return $ C_Handler ch_at ch_int ch_from ch_last svs' msg' ch_timev ch_secsv body'
 
 instance {-# OVERLAPS #-} AC a => AC (DLinExportBlock a) where
   ac (DLinExportBlock at vs a) = do
     a' <- ac a
-    vs' <- mapM ac_vls vs
+    vs' <- mapM ac vs
     return $ DLinExportBlock at vs' a'
 
 instance AC EPart where
-  ac (EPart {..}) =
-    fresh $ EPart ep_at ep_isApi ep_interactEnv <$> ac ep_tail
+  ac (EPart {..}) = fresh $ EPart ep_at ep_isApi ep_interactEnv <$> ac ep_tail
 
 instance AC EPProg where
   ac (EPProg {..}) = EPProg epp_opts epp_init <$> ac epp_exports <*> ac epp_views <*> pure epp_stateSrcMap <*> pure epp_apis <*> pure epp_events <*> ac epp_m
@@ -315,8 +331,7 @@ instance AC DLViewsX where
   ac (DLViewsX a b) = DLViewsX <$> ac a <*> ac b
 
 instance AC CPProg where
-  ac (CPProg {..}) =
-    CPProg cpp_at cpp_opts cpp_init <$> ac cpp_views <*> pure cpp_apis <*> pure cpp_events <*> ac cpp_handlers
+  ac (CPProg {..}) = CPProg cpp_at cpp_opts cpp_init <$> ac cpp_views <*> pure cpp_apis <*> pure cpp_events <*> ac cpp_handlers
 
 ac_vi :: AppT ViewsInfo
 ac_vi = mapM (mapM (fresh . ac))
@@ -354,25 +369,26 @@ instance AC LLConsensus where
           ( LLC_Com
               (DL_Var at_v1 dv_v1)
               ( LLC_Com
-                  (DL_LocalSwitch at_s1 dv_s1 csm_s1)
+                  (DL_LocalSwitch at_s1 dv_s1 (SwitchCases csm_s1))
                   ( LLC_Com
                       (DL_Var at_v2 dv_v2)
                       ( LLC_Com
-                          (DL_LocalSwitch at_s2 dv_s2 csm_s2)
+                          (DL_LocalSwitch at_s2 dv_s2 (SwitchCases csm_s2))
                           k
                         )
                     )
                 )
             ) | False && dv_s1 == dv_s2 -> do
-              let combine :: SLVar -> (DLVar, Bool, DLTail) -> (DLVar, Bool, DLTail)
-                  combine vn (vv1, vb1, vk1) = (vv1, vb', vk')
+              let combine :: SLVar -> SwitchCase DLTail -> SwitchCase DLTail
+                  combine vn (SwitchCase vl1 vk1) = (SwitchCase vl' vk')
                     where
-                      (vv2, vb2, vk2) = csm_s2 M.! vn
-                      vb' = vb1 || vb2
-                      vk2' = DT_Com (DL_Let at_s2 (DLV_Let DVC_Many vv2) (DLE_Arg at_s2 $ DLA_Var vv1)) vk2
+                      vl' = DLVarLet (Just DVC_Many) vv1
+                      vv1 = varLetVar vl1
+                      SwitchCase vl2 vk2 = csm_s2 M.! vn
+                      vk2' = DT_Com (DL_Let at_s2 (vl2lv vl2) (DLE_Arg at_s2 $ DLA_Var $ vv1)) vk2
                       vk' = dtReplace DT_Com vk2' vk1
               let csm_s12 = M.mapWithKey combine csm_s1
-              return $ LLC_Com (DL_Var at_v1 dv_v1) $ LLC_Com (DL_Var at_v2 dv_v2) $ LLC_Com (DL_LocalSwitch at_s1 dv_s1 csm_s12) k
+              return $ LLC_Com (DL_Var at_v1 dv_v1) $ LLC_Com (DL_Var at_v2 dv_v2) $ LLC_Com (DL_LocalSwitch at_s1 dv_s1 (SwitchCases csm_s12)) k
           _ ->
             return c'
       return $ mkCom LLC_Com m' c''
@@ -381,10 +397,7 @@ instance AC LLConsensus where
       t' <- ac t
       ac_visit c
       return $ LLC_If at c t' f'
-    LLC_Switch at c csm -> do
-      csm' <- ac csm
-      ac_visit c
-      return $ LLC_Switch at c csm'
+    LLC_Switch at c csm -> doSwitch LLC_Switch at c csm
     LLC_FromConsensus at1 at2 fs s ->
       LLC_FromConsensus at1 at2 fs <$> ac s
     LLC_While {..} -> do
@@ -417,9 +430,73 @@ instance AC LLStep where
       return $ LLS_ToConsensus lls_tc_at lct' send' recv' mtime'
 
 instance AC LLProg where
-  ac (LLProg llp_at llp_opts llp_parts llp_init llp_exports llp_views llp_apis llp_aliases llp_events llp_step) =
-    LLProg llp_at llp_opts llp_parts llp_init <$>
-      ac llp_exports <*> pure llp_views <*> pure llp_apis <*> pure llp_aliases <*> pure llp_events <*> ac llp_step
+  ac (LLProg {..}) = LLProg llp_at llp_opts llp_parts llp_init <$> ac llp_exports <*> pure llp_views <*> pure llp_apis <*> pure llp_aliases <*> pure llp_events <*> ac llp_step
+
+instance AC CLStmt where
+  ac = \case
+    CLDL m -> CLDL <$> ac m
+    CLBindSpecial at lv sp -> do
+      lv' <- ac_vdef True lv
+      case lv' of
+        DLV_Eff -> skip at
+        _ -> return $ CLBindSpecial at lv' sp
+    CLTimeCheck at x -> do
+      ac_visit x
+      return $ CLTimeCheck at x
+    CLEmitPublish at w vs -> do
+      ac_visit vs
+      return $ CLEmitPublish at w vs
+    CLStateBind at safe vs s -> do
+      vs' <- ac vs
+      return $ CLStateBind at safe vs' s
+    CLIntervalCheck at x y int -> do
+      ac_visit x
+      ac_visit y
+      ac_visit int
+      return $ CLIntervalCheck at x y int
+    CLStateSet at w vs -> do
+      ac_visit vs
+      return $ CLStateSet at w vs
+    CLTokenUntrack at a -> do
+      ac_visit a
+      return $ CLTokenUntrack at a
+    CLMemorySet at v a -> do
+      ac_visit a
+      return $ CLMemorySet at v a
+    where
+      skip at = return $ CLDL $ DL_Nop at
+
+instance AC CLTail where
+  ac = \case
+    CL_Com m k -> do
+      k' <- ac k
+      m' <- ac m
+      return $ CL_Com m' k'
+    CL_If at c t f -> do
+      f' <- ac f
+      t' <- ac t
+      ac_visit $ c
+      return $ CL_If at c t' f'
+    CL_Switch at v csm -> doSwitch CL_Switch at v csm
+    CL_Jump at f vs isApi mmret -> do
+      ac_visit vs
+      return $ CL_Jump at f vs isApi mmret
+    CL_Halt at hm -> return $ CL_Halt at hm
+
+instance AC CLFun where
+  ac (CLFun {..}) = fresh $ do
+    t' <- ac clf_tail
+    dom' <- ac clf_dom
+    return $ CLFun clf_at dom' clf_view t'
+
+instance AC CLIntFun where
+  ac (CLIntFun {..}) = CLIntFun <$> ac cif_fun <*> pure cif_mwhich
+
+instance AC CLExtFun where
+  ac (CLExtFun {..}) = CLExtFun cef_rng cef_kind <$> ac cef_fun
+
+instance AC CLProg where
+  ac (CLProg {..}) = CLProg clp_at clp_opts clp_defs <$> ac clp_funs <*> ac clp_api <*> pure clp_state
 
 add_counts' :: AC b => Bool -> b -> IO b
 add_counts' e_sim x = do

@@ -1,9 +1,9 @@
 import Timeout from 'await-timeout';
 import { ethers as real_ethers } from 'ethers';
 import {
-  assert, protect, simTokenAccepted_,
+  assert, protect,
 } from './shared_backend';
-import type { MaybeRep, MapRefT } from './shared_backend'; // =>
+import type { MaybeRep } from './shared_backend'; // =>
 import {
   apiStateMismatchError,
   replaceableThunk,
@@ -34,6 +34,7 @@ import {
   Mnemonic,
   mkGetEventTys,
   mShowFundFromFaucetWarning,
+  MapRefT,
 } from './shared_impl';
 import {
   bigNumberify,
@@ -98,7 +99,7 @@ type Interface = real_ethers.utils.Interface;
 // on unhandled promise rejection, use:
 // node --unhandled-rejections=strict
 
-const reachBackendVersion = 26;
+const reachBackendVersion = 27;
 const reachEthBackendVersion = 9;
 export type Backend = IBackend<AnyETH_Ty> & {_Connectors: {ETH: {
   version: number,
@@ -169,11 +170,13 @@ const {
   stdlib,
 } = ethLikeCompiled;
 const {
-  T_Address, T_Tuple,
-  T_UInt, T_Contract,
+  T_Address, T_Tuple, T_Null,
+  T_UInt, T_Contract, T_Data,
   addressEq,
+  simTokenAccepted_,
+  digest,
 } = stdlib;
-const reachStdlib: Stdlib_Backend<AnyETH_Ty> = stdlib;
+const reachStdlib: Stdlib_Backend<Token, ContractInfo, ConnectorTy> = stdlib;
 
 /** @description convenience function for drilling down to the actual address */
 const getAddr = async (acc: AccountTransferable): Promise<Address> => {
@@ -557,15 +560,20 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
         // @ts-ignore
         return res;
       };
-      const apiMapRef = (i:number, ty:AnyETH_Ty): MapRefT<any> => async (f:string): Promise<MaybeRep<any>> => {
+      const apiMapRef = <K, A>(i:number): MapRefT<K, A, ConnectorTy> => async (kt:ConnectorTy, k:K, vt:ConnectorTy): Promise<MaybeRep<A>> => {
         const dhead = [label, 'apiMapRef'];
-        debug(dhead, {i, ty, f});
+        debug(dhead, {i, kt, k, vt});
         const ethersC = await getC();
         const mf = `_reachm_${i}Ref`;
         debug(dhead, mf);
-        const mfv = await ethersC[mf](f);
+        const kp = kt.isBaseType ? k : digest([kt], [k]);
+        const mfv = await ethersC[mf](kp);
         debug(dhead, { mfv });
-        const res = ty.unmunge(mfv);
+        const mvt = T_Data({
+          'None': T_Null,
+          'Some': vt,
+        });
+        const res = mvt.unmunge(mfv);
         debug(dhead, res);
         // @ts-ignore
         return res;
@@ -790,16 +798,22 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
         return cs;
       }
 
-      return { getContractInfo, getContractAddress, getContractCompanion, getBalance, getCurrentStep, sendrecv, recv, getState, apiMapRef, simTokenAccepted };
+      const makeGetKey = <K>(mapi:number) => async (kt:ConnectorTy, k:K, vt:ConnectorTy): Promise<[string, number]> => {
+        void vt; void mapi;
+        return [ digest([kt], [k]), 0 ];
+      };
+
+      return { getContractInfo, getContractAddress, getContractCompanion, getBalance, getCurrentStep, sendrecv, recv, getState, apiMapRef, simTokenAccepted, makeGetKey };
     };
 
     const setupView = (setupViewArgs: SetupViewArgs) => {
       const eq = newEventQueue();
       const getC = makeGetC(setupViewArgs, eq);
-      const viewLib: IViewLib = {
-        viewMapRef: async (...args: any): Promise<any> => {
-          void(args);
-          throw Error('viewMapRef not used by ETH backend'); },
+      const viewLib: IViewLib<Ty> = {
+        viewMapRef: async <K, A>(mapi:number, kt:ConnectorTy, k:K, vt:ConnectorTy): Promise<MaybeRep<A>> => {
+          void mapi; void kt; void k; void vt;
+          throw Error('viewMapRef not used by ETH backend');
+        },
       };
       const getView1 = (vs:BackendViewsInfo, v:string, k:string|undefined, vim: BackendViewInfo, isSafe = true) =>
         async (...gargs: any[]): Promise<any> => {

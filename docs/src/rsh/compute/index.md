@@ -807,11 +807,12 @@ range: 9 - 9
 
 @{ref("rsh", "Bytes.fromHex")}
 ```reach
-Bytes(4).fromHex('0x01ffc9a7');
+Bytes.fromHex('0x01ffc9a7');
 ```
 
-`{!rsh} Bytes(n).fromHex(BYTES)` allows a value of `{!rsh} Bytes(n)` to be constructed with hexadecimal notation.
+`{!rsh} Bytes.fromHex(BYTES)` allows a value of `{!rsh} Bytes(n)` to be constructed with hexadecimal notation.
 The value of `BYTES` must be known at compile time.
+`n` is determined by the length of `BYTES`.
 
 ### String Concatenation
 
@@ -1306,11 +1307,25 @@ Map.reduce(map, z, f)
 map.reduce(z, f)
 ```
 
- `{!rsh} Map.reduce(map, z, f)` returns the [left fold](https://en.wikipedia.org/wiki/Fold_(higher-order_function)) of the function `{!rsh} f` over the given mapping with the initial value `{!rsh} z`.
-For example, `{!rsh} m.reduce(0, add)` sums the elements of the mapping.
+ `{!rsh} Map.reduce(map, z, f)` returns the [left fold](https://en.wikipedia.org/wiki/Fold_(higher-order_function)) of the function `{!rsh} f` over the values of the given mapping with the initial value `{!rsh} z`.
 This may be abbreviated as `{!rsh} map.reduce(z, f)`.
+For example, `{!rsh} m.reduce(0, (acc, v) => acc + v)` sums the elements of the mapping.
 
 The function `{!rsh} f` must satisfy the property, for all `{!rsh} z`, `{!rsh} a`, `{!rsh} b`, `{!rsh} f(f(z, b), a) == f(f(z, a), b)`, because the order of evaluation is unpredictable.
+
+#### `Map.reduceWithKey` && `.reduceWithKey`
+
+@{ref("rsh", "Map.reduceWithKey")}
+```reach
+Map.reduceWithKey(map, z, f)
+map.reduceWithKey(z, f)
+```
+
+ `{!rsh} Map.reduceWithKey(map, z, f)` returns the [left fold](https://en.wikipedia.org/wiki/Fold_(higher-order_function)) of the function `{!rsh} f` over the keys and values of the given mapping with the initial value `{!rsh} z`.
+This may be abbreviated as `{!rsh} map.reduceWithKey(z, f)`.
+For example, `{!rsh} m.reduce(0, (acc, k, v) => acc + k + v)` sums the keys and values of the mapping.
+
+The function `{!rsh} f` must satisfy the property, for all `z`, `k1`, `a`, `k2`, `b`, `{!rsh} f(f(z, k2, b), k1, a) == f(f(z, k1, a), k2, b)`, because the order of evaluation is unpredictable.
 
 ### {#ref-programs-objects} Objects
 
@@ -1803,12 +1818,6 @@ possible( claim, [msg] )
  A possibility assertion which is only valid if it is possible for `{!rsh} claim` to evaluate to `{!rsh} true` with honest frontends and participants.
 It accepts an optional bytes argument, which is included in any reported violation.
 
-```reach
-load: /examples/algo-try-csp/index.rsh
-md5: 77303319a82af26faaecb2bd3295e644
-range: 30 - 32
-```
-
 ### `digest`
 
 @{ref("rsh", "digest")}
@@ -2025,7 +2034,7 @@ Example:
 
 ```reach
 load: /examples/nft-auction-api/index.rsh
-md5: aba879d62803fb298b7ce92187d6a489
+md5: ae17b7d75b615cbac282ca0d776c6735
 range: 48 - 52
 ```
 
@@ -2111,7 +2120,7 @@ This pattern is so common that it can be abbreviated as `{!rsh} .timeRemaining`.
 
 ```reach
 load: /examples/raffle/index.rsh
-md5: b6632a71c54afc8e1da08f2d6c0dbad3
+md5: 86dfc59fc496f3be68da7f97ff4abfac
 range: 37-40
 ```
 
@@ -2128,7 +2137,7 @@ implies( x, y )
 
 ```reach
 load: /examples/raffle/index.rsh
-md5: b6632a71c54afc8e1da08f2d6c0dbad3
+md5: 86dfc59fc496f3be68da7f97ff4abfac
 range: 52 - 57
 ```
 

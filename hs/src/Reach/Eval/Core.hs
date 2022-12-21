@@ -30,7 +30,7 @@ import Language.JavaScript.Parser
 import Language.JavaScript.Parser.AST
 import Reach.AST.Base
 import Reach.AST.DL
-import Reach.AST.DLBase
+import Reach.AST.DLBase hiding (typeOf)
 import Reach.AST.SL
 import Reach.Connector
 import Reach.Counter
@@ -339,25 +339,44 @@ app_default_opts :: Counter -> Counter -> Connectors -> DLOpts
 app_default_opts idxr dar cns =
   DLOpts
     { dlo_verifyArithmetic = False
-    , dlo_untrustworthyMaps = False
     , dlo_verifyPerConnector = False
     , dlo_autoTrackPublishedTokens = True
     , dlo_connectors = cns
     , dlo_counter = idxr
     , dlo_bals = 1
     , dlo_droppedAsserts = dar
+    , dlo_aem = defaultALGOExitMode
     }
 
-app_options :: M.Map SLVar (DLOpts -> SLVal -> Either String DLOpts)
+app_options :: M.Map SLVar (SrcLoc -> DLOpts -> SLVal -> App (Either String DLOpts))
 app_options =
   M.fromList
-    [ ("verifyArithmetic", opt_bool (\opts b -> opts {dlo_verifyArithmetic = b}))
-    , ("untrustworthyMaps", opt_bool (\opts b -> opts {dlo_untrustworthyMaps = b}))
-    , ("verifyPerConnector", opt_bool (\opts b -> opts {dlo_verifyPerConnector = b}))
-    , ("autoTrackPublishedTokens", opt_bool (\opts b -> opts {dlo_autoTrackPublishedTokens = b}))
-    , ("connectors", opt_connectors)
+    [ ("verifyArithmetic", bland $ opt_bool (\opts b -> opts {dlo_verifyArithmetic = b}))
+    , ("untrustworthyMaps", opt_deprecated D_UntrustworthyMaps)
+    , ("verifyPerConnector", bland $ opt_bool (\opts b -> opts {dlo_verifyPerConnector = b}))
+    , ("autoTrackPublishedTokens", bland $ opt_bool (\opts b -> opts {dlo_autoTrackPublishedTokens = b}))
+    , ("connectors", bland $ opt_connectors)
+    , ("ALGOExitMode", bland $ opt_read $ \opts v -> opts { dlo_aem = v })
     ]
   where
+    bland f _at opts v = return $ f opts v
+    opt_deprecated msg at opts _v = do
+      liftIO $ emitWarning (Just at) $ W_Deprecated msg
+      return $ Right opts
+    opt_read :: forall a . (Show a, Read a, Enum a) => (DLOpts -> a -> DLOpts) -> DLOpts -> SLVal -> Either String DLOpts
+    opt_read f opts v =
+      case v of
+        SLV_Bytes _ bs -> g $ bunpack bs
+        SLV_BytesDyn _ bs -> g $ bunpack bs
+        SLV_String _ bs -> g $ T.unpack bs
+        _ -> Left $ "expected bytes or string"
+      where
+        g bs =
+          case readMay bs of
+            Just x -> Right $ f opts x
+            Nothing -> Left $ "invalid option; valid are: " <> show vs
+        vs :: [a]
+        vs = enumFrom (toEnum 0)
     opt_bool f opts v =
       case v of
         SLV_Bool _ b -> Right $ f opts b
@@ -900,10 +919,10 @@ applyType ct v = \case
               let vv = SLV_DLVar dv'
               SLRes case_lifts _ _ <- captureRes $ rec vt vv
               let sa'' = sa' <> mkAnnot case_lifts
-              let casem'' = M.insert vn (dv', True, case_lifts) casem'
+              let casem'' = M.insert vn (SwitchCase (v2vl dv') case_lifts) casem'
               return (sa'', casem'')
         (sa', casem') <- foldM cmb (mempty, mempty) $ M.toList stm
-        saveLift $ DLS_Switch at dv sa' casem'
+        saveLift $ DLS_Switch at dv sa' $ SwitchCases casem'
       _ -> meh
   ST_Struct stfs -> zipWithM_ rec (map snd stfs) =<< tups
   ST_Fun {} -> meh
@@ -1431,6 +1450,12 @@ evalAsEnvM sv@(lvl, obj) = case obj of
         , ("track", delayCall SLPrim_Token_track)
         , ("accepted", delayCall SLPrim_Token_accepted)
         ]
+  SLV_Connector "ALGO" ->
+    return $ Just $
+      M.fromList $
+        [ ("blockSeed", retV $ public $ SLV_Prim $ SLPrim_ALGOBlockField ABF_Seed)
+        , ("blockSecs", retV $ public $ SLV_Prim $ SLPrim_ALGOBlockField ABF_Timestamp)
+        ]
   SLV_Type ST_Token ->
     return $ Just $
       M.fromList $
@@ -1542,13 +1567,17 @@ evalAsEnvM sv@(lvl, obj) = case obj of
     return $ Just $
       M.fromList $
         [ ("new", retV $ public $ SLV_Prim $ SLPrim_Map_new)
-        , ("reduce", retV $ public $ SLV_Prim $ SLPrim_Map_reduce)
+        , ("reduce", retV $ public $ SLV_Prim $ SLPrim_Map_reduce False)
+        , ("reduceWithKey", retV $ public $ SLV_Prim $ SLPrim_Map_reduce True)
         ]
           <> foldableValueEnv
   SLV_Map _ ->
     return $ Just $
       M.fromList $
-        [("reduce", delayCall SLPrim_Map_reduce)] <> foldableObjectEnv
+        [ ("reduce", delayCall $ SLPrim_Map_reduce False)
+        , ("reduceWithKey", delayCall $ SLPrim_Map_reduce True)
+        ]
+        <> foldableObjectEnv
   SLV_Prim SLPrim_Bytes ->
     return $ Just $
       M.fromList $
@@ -3113,7 +3142,7 @@ evalPrim p sargs =
               let t = T_Array f_ty size
               (ans_dv, ans_dsv) <- make_dlvar at t
               let f_bl = DLSBlock at [] f_lifts f_da
-              saveLift $ DLS_ArrayMap at ans_dv x_da a_dv i_dv f_bl
+              saveLift $ DLS_ArrayMap at (v2lv ans_dv) x_da (map v2vl a_dv) (v2vl i_dv) f_bl
               return $ (f_lvl, ans_dsv)
     SLPrim_array_reduce withIndex ->
       case args of
@@ -3163,7 +3192,7 @@ evalPrim p sargs =
             False -> do
               (ans_dv, ans_dsv) <- make_dlvar at z_ty
               let f_bl = DLSBlock at [] f_lifts f_da
-              saveLift $ DLS_ArrayReduce at ans_dv x_da z_da b_dv a_dv i_dv f_bl
+              saveLift $ DLS_ArrayReduce at (v2lv ans_dv) x_da z_da (v2vl b_dv) (map v2vl a_dv) (v2vl i_dv) f_bl
               return $ (lvl, ans_dsv)
     SLPrim_array_set ->
       case map snd sargs of
@@ -3319,6 +3348,9 @@ evalPrim p sargs =
       at <- withAt id
       (obj_v, field_v, val_v) <- three_args
       (obj_t, obj_a) <- compileTypeOf obj_v
+      case obj_t of
+        T_Object _ -> return ()
+        _ -> expect_t obj_v $ Err_Expected "object"
       (val_t, val_a) <- compileTypeOf val_v
       fieldName <- mustBeBytes field_v
       let fieldName' = bunpack fieldName
@@ -3650,7 +3682,7 @@ evalPrim p sargs =
       t' <- st2dte t
       mv <- mapNew kt' t'
       retV $ public $ SLV_Map mv
-    SLPrim_Map_reduce -> do
+    SLPrim_Map_reduce withKey -> do
       at <- withAt id
       uni <- readUniverse
       (m, z, f_) <- three_args
@@ -3659,15 +3691,16 @@ evalPrim p sargs =
           SLV_Map mv -> return $ mv
           _ -> expect_t m $ Err_Expected_Map
       mi <- mapLookup mv
-      let x_tym = dlmi_tym mi
-      let f = jsClo at uni "reduceWrapper" ("(b, ma) => ma.match({None: (() => b), Some: (a => f(b, a))})") (M.fromList [("f", f_)])
-      ensure_while_invariant "Map.reduce"
+      let f_' = if withKey then f_ else jsClo at uni "keyWrapper" ("(b, k, a) => f(b, a)") (M.fromList [("f", f_)])
+      let f = jsClo at uni "reduceWrapper" ("(b, k, ma) => ma.match({None: (() => b), Some: (a => f(b, k, a))})") (M.fromList [("f", f_')])
+      ensure_while_invariant $ "Map.reduce" <> (if withKey then "WithKey" else "")
       (z_ty, z_da) <- compileTypeOf z
       (b_dv, b_dsv) <- make_dlvar at z_ty
-      (ma_dv, ma_dsv) <- make_dlvar at x_tym
+      (k_dv, k_dsv) <- make_dlvar at $ dlmi_kt mi
+      (ma_dv, ma_dsv) <- make_dlvar at $ dlmi_tym mi
       SLRes f_lifts _ f_da <-
         captureRes $ do
-          (f_lvl, f_v) <- evalApplyVals' f [(lvl, b_dsv), (lvl, ma_dsv)]
+          (f_lvl, f_v) <- evalApplyVals' f [(lvl, b_dsv), (lvl, k_dsv), (lvl, ma_dsv)]
           ensure_level lvl f_lvl
           (f_ty, f_da) <- compileTypeOf f_v
           typeEq z_ty f_ty (Just $ srclocOf z) (Just $ srclocOf f_v)
@@ -3675,7 +3708,7 @@ evalPrim p sargs =
       (ans_dv, ans_dsv) <- make_dlvar at z_ty
       let f_bl = DLSBlock at [] f_lifts f_da
       mri <- ctxt_alloc
-      saveLift $ DLS_MapReduce at mri ans_dv mv z_da b_dv ma_dv f_bl
+      saveLift $ DLS_MapReduce at mri (v2lv ans_dv) mv z_da (v2vl b_dv) (v2vl k_dv) (v2vl ma_dv) f_bl
       return $ (lvl, ans_dsv)
     SLPrim_Refine -> do
       at <- withAt id
@@ -3767,9 +3800,7 @@ evalPrim p sargs =
       metam <- mustBeObject =<< one_arg
       metam' <- mapM (ensure_public . sss_sls) metam
       let keys = M.keysSet metam'
-      let validKeys = S.fromList $ [ "fees", "accounts", "assets", "addressToAccount", "apps",
-                                     "onCompletion", "strictPay", "rawCall",
-                                     "simNetRecv", "simTokensRecv", "simReturnVal" ]
+      let validKeys = S.fromList $ [ "fees", "accounts", "assets", "addressToAccount", "apps", "boxes", "onCompletion", "strictPay", "rawCall", "simNetRecv", "simTokensRecv", "simReturnVal", "txnOrderForward" ]
       unless (keys `S.isSubsetOf` validKeys) $ do
         expect_ $ Err_Remote_ALGO_extra $ S.toAscList $
           keys `S.difference` validKeys
@@ -3779,28 +3810,40 @@ evalPrim p sargs =
             Nothing -> return $ False
             Just (SLV_Bool _ b) -> return b
             Just _ -> expect_ $ Err_Remote_ALGO_extra $ [ lab <> " with non-compile time value" ]
-      ralgo_fees <- metal "fees" $ \case
+      ra_fees <- metal "fees" $ \case
         Nothing -> return $ DLA_Literal $ DLL_Int at UI_Word 0
         Just v -> compileCheckType msdef (T_UInt UI_Word) v
-      ralgo_strictPay <- expectBool "strictPay"
-      ralgo_rawCall <- expectBool "rawCall"
-      ralgo_accounts <- metal "accounts" $ \case
+      ra_strictPay <- expectBool "strictPay"
+      ra_rawCall <- expectBool "rawCall"
+      ra_txnOrderForward <- expectBool "txnOrderForward"
+      ra_accounts <- metal "accounts" $ \case
         Nothing -> return $ mempty
         Just v -> do
           vs <- explodeTupleLike "REMOTE_FUN.ALGO.accounts" v
           mapM (compileCheckType msdef T_Address) vs
-      ralgo_assets <- metal "assets" $ \case
+      ra_assets <- metal "assets" $ \case
         Nothing -> return $ mempty
         Just v -> do
           vs <- explodeTupleLike "REMOTE_FUN.ALGO.assets" v
           mapM (compileCheckType msdef T_Token) vs
-      ralgo_apps <- metal "apps" $ \case
+      ra_apps <- metal "apps" $ \case
         Nothing -> return $ mempty
         Just v -> do
           vs <- explodeTupleLike "REMOTE_FUN.ALGO.apps" v
           mapM (compileCheckType msdef T_Contract) vs
-      ralgo_addr2acc <- expectBool "addressToAccount"
-      ralgo_onCompletion <- metal "onCompletion" $ \case
+      ra_boxes <- metal "boxes" $ \case
+        Nothing -> return $ mempty
+        Just v -> do
+          vs <- explodeTupleLike "REMOTE_FUN.ALGO.boxes" v
+          forM vs $ \tv -> do
+            (t, da) <- compileTypeOf tv
+            case t of
+              T_Tuple [ T_UInt UI_Word, T_Bytes n ] | n <= 64 -> do
+                return da
+              _ ->
+                expect_ $ Err_Remote_ALGO_extra $ [ "values in boxes array must be a UInt and a Bytes(n) where N <= 64" ]
+      ra_addr2acc <- expectBool "addressToAccount"
+      ra_onCompletion <- metal "onCompletion" $ \case
         Nothing -> return $ RA_NoOp
         Just (SLV_Bytes _ "NoOp") -> return $ RA_NoOp
         Just (SLV_Bytes _ "OptIn") -> return $ RA_OptIn
@@ -3811,12 +3854,12 @@ evalPrim p sargs =
         Just _ -> expect_ $ Err_Remote_ALGO_extra $ [ "illegal value for onCompletion" ]
       let locAtOf = locAt . srclocOf
       let compileUInt = compileCheckType msdef (T_UInt UI_Word)
-      ralgo_simNetRecv <- metal "simNetRecv" $ maybe (pure argLitZero) (\x -> locAtOf x $ compileUInt x)
-      ralgo_simTokensRecv <- metal "simTokensRecv" $ maybe (pure RA_Unset) $ \case
+      ra_simNetRecv <- metal "simNetRecv" $ maybe (pure argLitZero) (\x -> locAtOf x $ compileUInt x)
+      ra_simTokensRecv <- metal "simTokensRecv" $ maybe (pure RA_Unset) $ \case
         SLV_Tuple tupAt amts -> locAt tupAt $ RA_List tupAt <$> mapM compileUInt amts
         _ -> expect_ $ Err_Remote_ALGO_extra ["simTokensRecv must be a Tuple of UInts"]
       rngTy <- st2dte $ stf_rng stf
-      ralgo_simReturnVal <- metal "simReturnVal" $ \case
+      ra_simReturnVal <- metal "simReturnVal" $ \case
         Just x -> locAtOf x $ Just <$> compileCheckType msdef rngTy x
         Nothing -> return Nothing
       let malgo = Just $ DLRemoteALGO {..}
@@ -3853,13 +3896,13 @@ evalPrim p sargs =
       let nnToksNotBilled = allTokens \\ nntbRecv
       let withBill = DLWithBill nBilled nntbRecv nnToksNotBilled
       let DLRemoteALGO {..} = fromMaybe zDLRemoteALGO malgo
-      ralgo_simTokensRecv' <- fmap RA_Tuple . compileArgExpr_ =<< case ralgo_simTokensRecv of
+      ra_simTokensRecv' <- fmap RA_Tuple . compileArgExpr_ =<< case ra_simTokensRecv of
         -- If user didn't give simTokensRecv, generate default where the ctc receives zero of every token
         RA_Unset -> return $ DLAE_Tuple $ replicate nntbC $ DLAE_Arg $ DLA_Literal $ DLL_Int at UI_Word 0
         RA_List _ amts | length amts == nntbC -> return $ DLAE_Tuple $ map DLAE_Arg amts
         RA_List at' _ -> locAt at' $ expect_ $ Err_Remote_ALGO_extra ["Length of simTokensRecv must match the number of tokens billed"]
         RA_Tuple _ -> impossible "RA_Tuple"
-      let ralgo = DLRemoteALGO { ralgo_simTokensRecv = ralgo_simTokensRecv', .. }
+      let ralgo = DLRemoteALGO { ra_simTokensRecv = ra_simTokensRecv', .. }
       res' <-
         doInteractiveCall
           sargs
@@ -3933,11 +3976,12 @@ evalPrim p sargs =
                 expect_thrown opt_at $
                   Err_App_InvalidOption k (S.toList $ M.keysSet app_options)
               Just opt ->
-                case opt acc v of
-                  Right x -> x
+                opt opt_at acc v >>= \case
+                  Right x -> return x
                   Left x -> expect_thrown opt_at $ Err_App_InvalidOptionValue k x
-      aisiPut aisi_env $ \ae ->
-        ae {ae_dlo = M.foldrWithKey use_opt (ae_dlo ae) opts}
+      dlo <- ae_dlo <$> aisiGet aisi_env
+      dlo' <- foldrWithKeyM use_opt dlo opts
+      aisiPut aisi_env $ \ae -> ae { ae_dlo = dlo' }
       return $ public $ SLV_Null at "setOptions"
     SLPrim_adaptReachAppTupleArgs -> do
       tat <- withAt id
@@ -3984,6 +4028,15 @@ evalPrim p sargs =
     SLPrim_getContract -> getContractInfo GET_CONTRACT
     SLPrim_getAddress -> getContractInfo GET_ADDRESS
     SLPrim_getCompanion -> getContractInfo GET_COMPANION
+    SLPrim_ALGOBlockField bf -> do
+      ensure_mode SLM_ConsensusStep "ALGO.Block"
+      nv <- one_arg
+      na <- compileCheckType msdef (T_UInt UI_Word) nv
+      at <- withAt id
+      let mdv = DLVar at Nothing $ maybeT $ abfType bf
+      dv <- ctxt_lift_expr mdv $ DLE_PrimOp at (ALGO_BLOCK bf) [na]
+      dv' <- doInternalLog_ Nothing dv
+      return $ (lvl, SLV_DLVar dv')
     SLPrim_EmitLog -> do
       (x, y) <- two_args
       ma <- mustBeBytes y
@@ -6652,7 +6705,7 @@ evalStmt = \case
               SLV_DLVar dv -> return dv
               _ -> impossible "select_all: not dlvar or interact field"
             let casemm = M.mapWithKey select_one casesm
-            let cmb :: (Maybe SLState, StmtAnnot, Maybe SLStmtRets, SwitchCases DLStmts) -> (SLVar, App (DLVar, SrcLoc, App SLStmtRes)) -> App (Maybe SLState, StmtAnnot, Maybe SLStmtRets, SwitchCases DLStmts)
+            let cmb :: (Maybe SLState, StmtAnnot, Maybe SLStmtRets, SwitchCasesM DLStmts) -> (SLVar, App (DLVar, SrcLoc, App SLStmtRes)) -> App (Maybe SLState, StmtAnnot, Maybe SLStmtRets, SwitchCasesM DLStmts)
                 cmb (mst', sa', mrets', casemm') (vn, casem) = do
                   (dv', at_c, casem') <- casem
                   locAt at_c $ do
@@ -6669,14 +6722,14 @@ evalStmt = \case
                           rets'' <- brCombineRets rets' case_rets'
                           return $ (Just st'', rets'')
                         _ -> impossible $ "switch"
-                    let casemm'' = M.insert vn (dv', True, case_lifts) casemm'
+                    let casemm'' = M.insert vn (SwitchCase (v2vl dv') case_lifts) casemm'
                     return $ (mst'', sa'', Just rets'', casemm'')
             (mst', sa', mrets', casemm') <-
               foldM cmb (Nothing, mempty, Nothing, mempty) $ M.toList casemm
             let rets' = maybe mempty id mrets'
             maybe (return ()) setSt mst'
             saveLift =<< checkCond om
-              =<< withAt (\at -> DLS_Switch at dv sa' casemm')
+              =<< withAt (\at -> DLS_Switch at dv sa' (SwitchCases casemm'))
             return $ SLStmtRes sco rets'
       fr <-
         case de_val of
@@ -6914,20 +6967,22 @@ mapNew dlmi_kt dlmi_ty = do
 mapDel :: DLMVar -> DLArg -> App ()
 mapDel mv mc = do
   at <- withAt id
-  ctxt_lift_eff $ DLE_MapSet at mv mc Nothing
+  DLMapInfo {..} <- mapLookup mv
+  ctxt_lift_eff $ DLE_MapSet at mv mc dlmi_ty Nothing
 
 mapSet :: DLMVar -> DLArg -> SLVal -> App ()
 mapSet mv mc nv = do
   at <- withAt id
   DLMapInfo {..} <- mapLookup mv
   na <- compileCheckType (Just dlmi_at) dlmi_ty nv
-  ctxt_lift_eff $ DLE_MapSet at mv mc $ Just na
+  ctxt_lift_eff $ DLE_MapSet at mv mc dlmi_ty $ Just na
 
 mapRef :: DLMVar -> SLVal -> App DLVar
 mapRef mv mcv = do
   at <- withAt id
   mi <- mapLookup mv
   mc <- compileCheckType (Just $ dlmi_at mi) (dlmi_kt mi) mcv
+  let vt = dlmi_ty mi
   let mt = dlmi_tym mi
   let mkvar = DLVar at Nothing mt
-  ctxt_lift_expr mkvar $ DLE_MapRef at mv mc
+  ctxt_lift_expr mkvar $ DLE_MapRef at mv mc vt

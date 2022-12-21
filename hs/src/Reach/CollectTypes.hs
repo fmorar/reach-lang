@@ -125,8 +125,8 @@ instance CollectsTypes DLRemoteALGOSTR where
     RA_Tuple t -> cts t
 
 instance CollectsTypes DLRemoteALGO where
-  cts (DLRemoteALGO a b c d e f g h i j k) =
-    cts a <> cts b <> cts c <> cts d <> cts e <> cts f <> cts g <> cts h <> cts i <> cts j <> cts k
+  cts (DLRemoteALGO {..}) =
+    cts ra_fees <> cts ra_accounts <> cts ra_assets <> cts ra_addr2acc <> cts ra_apps <> cts ra_boxes <> cts ra_onCompletion <> cts ra_strictPay <> cts ra_rawCall <> cts ra_simNetRecv <> cts ra_simTokensRecv <> cts ra_simReturnVal
 
 instance CollectsTypes AS.Value where
   cts = const mempty
@@ -160,8 +160,8 @@ instance CollectsTypes DLExpr where
     DLE_CheckPay _ _ y z -> cts y <> cts z
     DLE_Wait _ a -> cts a
     DLE_PartSet _ _ a -> cts a
-    DLE_MapRef _ _ fa -> cts fa
-    DLE_MapSet _ _ fa na -> cts fa <> cts na
+    DLE_MapRef _ _ fa vt -> cts fa <> cts vt
+    DLE_MapSet _ _ fa vt na -> cts fa <> cts na <> cts vt
     DLE_Remote _ _ av rt dr ->
       cts av <> cts rt <> cts dr
     DLE_TokenNew _ tns -> cts tns
@@ -197,7 +197,7 @@ instance CollectsTypes DLStmt where
   cts (DL_LocalIf _ _ a t f) = cts a <> cts t <> cts f
   cts (DL_LocalSwitch _ v csm) = cts v <> cts csm
   cts (DL_Only _ _ b) = cts b
-  cts (DL_MapReduce _ _ ans _ z b a f) = cts ans <> cts z <> cts b <> cts a <> cts f
+  cts (DL_MapReduce _ _ ans _ z b k a f) = cts ans <> cts z <> cts b <> cts k <> cts a <> cts f
   cts (DL_LocalDo _ _ t) = cts t
 
 instance CollectsTypes DLTail where
@@ -236,6 +236,12 @@ instance CollectsTypes LLStep where
 instance CollectsTypes a => CollectsTypes (DLinExportBlock a) where
   cts (DLinExportBlock _ vs r) = cts vs <> cts r
 
+instance CollectsTypes a => CollectsTypes (SwitchCases a) where
+  cts (SwitchCases m) = cts m
+
+instance CollectsTypes a => CollectsTypes (SwitchCase a) where
+  cts (SwitchCase {..}) = cts sc_vl <> cts sc_k
+
 instance CollectsTypes Int where
   cts _ = mempty
 
@@ -250,6 +256,12 @@ instance CollectsTypes LLProg where
 instance CollectsTypes DLLetVar where
   cts (DLV_Eff) = mempty
   cts (DLV_Let _ x) = cts x
+
+instance CollectsTypes SvsPut where
+  cts (SvsPut {..}) = cts svsp_svs <> cts svsp_val
+
+instance CollectsTypes SvsGet where
+  cts (SvsGet {..}) = cts svsg_svs <> cts svsg_var
 
 instance CollectsTypes FromInfo where
   cts = \case

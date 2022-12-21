@@ -3,13 +3,66 @@
 Below is a list of changes to Reach.
 Versions and changes-within-versions are listed in reverse-chronological order: newest things first.
 
-## 0.1.12: 2022/09 - present
+## 0.1.13: 2022/11 - present
 
-@{verRC("0.1.12")}
+@{verRC("0.1.13")}
 
-@{rcNext("0.1.12-rc.10")}
+@{rcNext("0.1.13-rc.0")}
 
-@{rcNext("0.1.12-rc.9")}
++ 2022/12/19: Added `{!rsh} Map.reduceWithKey`.
+
++ 2022/12/19: Added `txnOrderForward` to `{!rsh} remote.ALGO`.
+
++ 2022/12/19: Added `{!rsh} ALGOExitMode` to `{!rsh} setOptions`.
+
++ 2022/12/15: Added `{!rsh} ALGO.blockSeed`, `{!rsh} ALGO.blockSecs`, and `{!js} stdlib.setAdjustTxnParams`.
+
++ 2022/12/14: Upgraded to PeraConnect 1.0.7 in React runner.
+
++ 2022/12/14: **Backwards Incompatible**: All Algorand wallets are now "bring-your-own", where the Reach standard library doesn't bundle the code, but expects to be given a reference to the corresponding library.
+  Please refer to @{seclink("ref-frontends-wallets")} for more details.
+  The React runner `{!cmd} reach react` still includes them, however.
+
++ 2022/12/14: The Algorand connector has been drastically improved and produces code that can be as much as 25% smaller.
+  This is important because Algorand contracts are limited to 8KB.
+
++ 2022/12/05: Upgraded to Algorand node v3.12.2-stable, and indexer 2.15.0.
+
++ 2022/11/24: Algorand-only: Contracts now combine all minimum balance payments into a single `pay` transaction, rather than expecting many individual transactions.
+
++ 2022/11/23: Algorand-only: Contracts no longer check their group size, so they can be combined with other transactions in their group.
+  They expect their paired transactions to be in the opposite order from before, however.
+
++ 2022/11/21: Added `boxes` field to `{!rsh} remote.ALGO`.
+
++ 2022/11/21: Algorand-only: The backend interface to deployed contracts was updated, so old contracts will not work with this version.
+
++ 2022/11/21: The backend interface to the compiled objects was updated, so you'll need to recompile for this release.
+
++ 2022/11/21: The `{!rsh} untrustworthyMaps` option has been removed, because all maps are now trustworthy.
+
++ 2022/11/21: The Algorand connector now uses boxes to implement maps.
+  This enables support for any type as a valid map key and ensures that all maps are now trustworthy.
+
++ 2022/11/14: The Algorand connector now targets AVM version 8.
+  This means that we use more efficient opcodes, like `switch`, `match`, and `dupn`.
+  These can have a dramatic effect on code size and opcode budgets.
+
++ 2022/11/14: Algorand-only: The backend interface to deployed contracts was updated, so old contracts will not work with this version.
++ 2022/11/14: Algorand-only: The backend interface to the compiled objects was updated, so you'll need to recompile for this release.
++ 2022/11/14: Upgraded to Algorand node v3.12.0-beta, indexer 2.15.0-rc1, and SDK 1.23.2.
++ 2022/11/14: Upgraded to Ethers 5.7.2.
++ 2022/11/14: Upgraded to Solidity 0.8.17.
++ 2022/11/14: Upgraded to geth 1.10.26.
++ 2022/11/14: Upgraded to MyAlgoConnect 1.4.1, WalletConnect 1.8.0, and PeraConnect 0.2.3.
+
++ 2022/11/14: **Backwards Incompatible**: We have removed support for Conflux (previously accessed through the `CFX` connector mode).
+
+## 0.1.12: 2022/09 - 2022/11
+
+@{verCur("0.1.12")}
+
+@{rcHead("0.1.12-rc.9")}
 
 + 2022/11/08: Added support for [AlgoSigner](https://github.com/PureStake/algosigner) as wallet fallback for Algorand.
 + 2022/11/07: The backend interface to the compiled objects was updated, so you'll need to recompile for this release.
@@ -59,7 +112,7 @@ Versions and changes-within-versions are listed in reverse-chronological order: 
 
 ## 0.1.11: 2022/06 - 2022/09
 
-@{verCur("0.1.11")}
+@{verOld("0.1.11")}
 
 @{rcHead("0.1.11-rc.10")}
 

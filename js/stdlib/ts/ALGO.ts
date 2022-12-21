@@ -5,11 +5,11 @@ import algosdk from 'algosdk';
 import { ethers } from 'ethers';
 import Timeout from 'await-timeout';
 import buffer from 'buffer';
-import type MyAlgoConnect from '@randlabs/myalgo-connect';
 import type {
   Transaction,
   EncodedTransaction,
   SuggestedParams,
+  BoxReference,
 } from 'algosdk'; // =>
 import type {
   ARC11_Wallet,
@@ -38,7 +38,7 @@ import {
   IAccount, IContract, IRecv,
   ISetupArgs, ISetupViewArgs, ISetupRes,
   // ISimRes,
-  ISimTxn, ISimRemote,
+  ISimTxn, ISimRemote, SimBoxRef,
   stdContract, stdVerifyContract,
   stdABIFilter,
   stdAccount,
@@ -77,6 +77,7 @@ import {
   Mnemonic,
   mkGetEventTys,
   mShowFundFromFaucetWarning,
+  MapRefT,
 } from './shared_impl';
 import {
   bigNumberify,
@@ -84,7 +85,12 @@ import {
   bigNumberToBigInt,
 } from './shared_user';
 import {
-  CBR_Address, CBR_Val,
+  CBR_Address,
+  CBR_Val,
+  hex_to_buf,
+  buf_to_arr,
+  buf_to_hex,
+  arr_to_buf,
 } from './CBR';
 import waitPort from './waitPort';
 import {
@@ -98,10 +104,7 @@ import {
   bytestringyNet,
 } from './ALGO_compiled';
 export type { Token } from './ALGO_compiled';
-import {
-  simTokenAccepted_
-} from './shared_backend';
-import type { MapRefT, MaybeRep } from './shared_backend'; // =>
+import type { MaybeRep } from './shared_backend'; // =>
 import { window, process } from './shim';
 import { sha512_256 } from 'js-sha512';
 import * as shared_user from './shared_user';
@@ -183,8 +186,8 @@ export interface ProviderEnv {
 const defaultALGO_TOKEN_HEADER = 'X-Algo-API-Token';
 const defaultALGO_INDEXER_TOKEN_HEADER = 'X-Indexer-API-Token';
 
-const reachBackendVersion = 26;
-const reachAlgoBackendVersion = 11;
+const reachBackendVersion = 27;
+const reachAlgoBackendVersion = 13;
 export type Backend = IBackend<AnyALGO_Ty> & {_Connectors: {ALGO: {
   version: number,
   ABI: any,
@@ -194,8 +197,6 @@ export type Backend = IBackend<AnyALGO_Ty> & {_Connectors: {ALGO: {
   extraPages: number,
   stateSize: number,
   stateKeys: number,
-  mapDataSize: number,
-  mapDataKeys: number,
   unsupported: Array<string>,
   warnings: Array<string>,
 }}};
@@ -262,6 +263,10 @@ type AppStateSchema = {
   'num-uint': bigint,
   'num-byte-slice': bigint,
 };
+interface Box {
+  'name': Uint8Array
+  'value': Uint8Array
+}
 type AppInfo = {
   'id': bigint,
   'created-at-round': bigint,
@@ -356,6 +361,8 @@ type AlgodTxn = {
   'pool-error': string,
 };
 
+type AdjustTxnParams = (who: CBR_Address, sr:SendRecvArgs, ps:TxnParams) => Promise<TxnParams>;
+
 interface ALGOHacks {
   signSendAndConfirm: any,
   toWTxn: any,
@@ -364,6 +371,7 @@ interface ALGOHacks {
   MinTxnFee: any,
   makeTransferTxn: any,
   setFaucet: any,
+  setAdjustTxnParams: (atp:AdjustTxnParams) => void,
 };
 interface ALGOStdlib extends Stdlib_User<Provider, ProviderEnv, ProviderName, Token, ContractInfo, Address, NetworkAccount, Ty, Backend, Contract, Account>, ALGOHacks {
 };
@@ -638,6 +646,14 @@ const getTxnParams = async (label: string): Promise<TxnParams> => {
   }
 };
 
+let adjustTxnParams: AdjustTxnParams = async (who:CBR_Address, srargs:SendRecvArgs, ps:TxnParams) => {
+  void who; void srargs;
+  return ps;
+};
+const setAdjustTxnParams = (atp:AdjustTxnParams) => {
+  adjustTxnParams = atp;
+};
+
 const sign_and_send_sync = async (
   label: string,
   acc: NetworkAccount,
@@ -676,15 +692,20 @@ function must_be_supported(bin: Backend) {
 // Get these from stdlib
 // const MaxTxnLife = 1000;
 const MinTxnFee = 1000;
-const MaxAppTxnAccounts = 4;
+const algoMaxAppTxnAccounts = 4;
+const algoMaxAppTxnForeignAssets = 8;
+const algoMaxAppBoxReferences = 8;
+const algoMaxAppTxnForeignApps = 8;
+const algoMaxAppTotalTxnReferences = 8;
 const MinBalance = 100000;
-const MaxAppProgramLen = 2048
+const MaxAppProgramLen = 2048;
+const algoMaxAppKeyLen = 64;
 
-const SchemaMinBalancePerEntry = 25000
-const SchemaBytesMinBalance = 25000
-const SchemaUintMinBalance = 3500
-const AppFlatParamsMinBalance = 100000
-const AppFlatOptInMinBalance = 100000
+const SchemaMinBalancePerEntry = 25000;
+const SchemaBytesMinBalance = 25000;
+const SchemaUintMinBalance = 3500;
+const AppFlatParamsMinBalance = 100000;
+const AppFlatOptInMinBalance = 100000;
 
 const ui8h = (x:Uint8Array): string => Buffer.from(x).toString('hex');
 const base64ToUI8A = (x:string): Uint8Array => Uint8Array.from(Buffer.from(x, 'base64'));
@@ -751,13 +772,6 @@ const isCreateTxn = (txn:IndexerTxn): boolean => {
   const at = txn['application-transaction'];
   return at ? bigNumberify(at['application-id']).eq(0) : false;
 };
-const emptyOptIn = (txn:IndexerTxn) => {
-  const at = txn['application-transaction'];
-  const ataa = at && at['application-args'] || [];
-  return at ?
-    (at['on-completion'] === 'optin' && ataa.length == 0)
-    : false;
-};
 const apiOnly = (txn:IndexerTxn) => {
   const ls = txn['logs'];
   if ( ls && ls.length === 1 ) {
@@ -815,14 +829,14 @@ const newEventQueue = (): EventQueue => {
   const getTxnTime = (x:IndexerTxn): BigNumber => bigNumberify(x['confirmed-round']);
   return makeEventQueue<EQInitArgs, IndexerTxn, RecvTxn>({
     raw2proc: indexerTxn2RecvTxn,
-    alwaysIgnored: (x) => (emptyOptIn(x) || apiOnly(x)),
+    alwaysIgnored: apiOnly,
     getTxns, getTxnTime,
   });
 };
 
-const { addressEq, assert, gt, protect } = stdlib;
+const { addressEq, assert, gt, protect, simTokenAccepted_, digest } = stdlib;
 
-const { T_UInt, T_Tuple, T_Contract, T_Bytes, T_Address, T_Digest } = typeDefs;
+const { T_UInt, T_Tuple, T_Contract, T_Bytes, T_Address, T_Digest, T_Null } = typeDefs;
 
 const { randomUInt, hasRandom } = makeRandom(8);
 
@@ -1008,7 +1022,7 @@ const walletFallback_MyAlgoWallet = (MyAlgoConnect: unknown, opts: object) => ()
   // https://github.com/randlabs/myalgo-connect/issues/27
   if (!window.Buffer) window.Buffer = Buffer;
   // @ts-ignore
-  const mac: MyAlgoConnect = new MyAlgoConnect();
+  const mac: any = new MyAlgoConnect();
   // MyAlgoConnect uses a global popup object for managing, so we need to
   // guarantee there is only one in flight at a time.
   const lock = new Lock();
@@ -1247,24 +1261,49 @@ const transfer = async (
     txn);
 };
 
+const sigLen = 4;
+interface SignatureChecker {
+  hex: string;
+  ui8: Uint8Array;
+  cmp: (x: string) => boolean;
+  sig: string;
+  hp: string;
+  b64: string;
+};
+const makeSignatureChecker = (name:string, tys:AnyALGO_Ty[], mret:(AnyALGO_Ty| undefined)): SignatureChecker => {
+  const tyns = tys.map(ty => ty.netName);
+  const retn1 = mret ? mret.netName : '';
+  // XXX hack until algosdk is fixed
+  const retn = retn1 === 'byte[0]' ? 'void' : retn1;
+  const sig = `${name}(${tyns.join(',')})${retn}`;
+  const hu = sha512_256(sig);
+  const hp = hu.slice(0, sigLen*2); // hu is hex nibbles
+  const trunc = (x: string): string => ui8h(base64ToUI8A(x).slice(0, sigLen));
+  const cmp = (log:string) => trunc(log) == hp;
+  const buf = hex_to_buf(`0x` + hp);
+  return {
+    hex: hp,
+    ui8: buf_to_arr(buf),
+    b64: base64ify(buf),
+    cmp,
+    sig,
+    hp,
+  };
+};
+
 interface LogRep {
   parse: (log: string) => (any[]|undefined),
   parse0: (txn: RecvTxn) => (any[]|undefined),
   parse0b: (txn: RecvTxn) => boolean,
 };
 const makeLogRep = (evt:string, tys:AnyALGO_Ty[]): LogRep => {
-  const hLen = 4;
-  const tyns = tys.map(ty => ty.netName);
-  const sig = `${evt}(${tyns.join(',')})`;
-  const hu = sha512_256(sig);
-  const hp = hu.slice(0, hLen*2); // hu is hex nibbles
-  const trunc = (x: string): string => ui8h(base64ToUI8A(x).slice(0, hLen));
-  debug(`makeLogRep`, { evt, tyns, sig, hu, hp });
+  const sc = makeSignatureChecker(evt, tys, undefined);
+  debug(`makeLogRep`, { evt, sc });
   const parse = (log:string): (any[]|undefined) => {
-    if ( trunc(log) !== hp ) { return undefined; }
+    if ( ! sc.cmp(log) ) { return undefined; }
     debug(`parse`, { log });
     // @ts-ignore
-    const [ logb, ...pd ] = T_Tuple([bytestringyNet(hLen), ...tys]).fromNet(reNetify(log));
+    const [ logb, ...pd ] = T_Tuple([bytestringyNet(sigLen), ...tys]).fromNet(reNetify(log));
     debug(`parse`, { logb, pd });
     return pd;
   };
@@ -1278,9 +1317,14 @@ const makeLogRep = (evt:string, tys:AnyALGO_Ty[]): LogRep => {
 };
 
 const reachEvent = (i:number) => `_reach_e${i}`;
-const makeHasLogFor = (i:number, tys:AnyALGO_Ty[]) => {
+const makeHasLogForR = (i:number, tys:AnyALGO_Ty[]) => {
   debug(`hasLogFor`, i, tys);
-  const lr = makeLogRep(reachEvent(i), tys);
+  const rtys = [ T_UInt, ...tys ];
+  const lr = makeLogRep(reachEvent(i), rtys);
+  return lr;
+}
+const makeHasLogFor = (i:number, tys:AnyALGO_Ty[]) => {
+  const lr = makeHasLogForR(i, tys);
   return lr.parse0b;
 };
 
@@ -1350,6 +1394,39 @@ const getAssetInfo = async (a:number): Promise<AssetInfo> => {
   const res = await doQuery_<IndexerAssetInfoRes>(dhead, q, 0, failOk);
   debug(dhead, res);
   return res.asset;
+};
+
+const getApplicationBoxM = async (idn:BigNumber, name:Uint8Array): Promise<OrExn<Uint8Array>> => {
+  const id = bigNumberToNumber(idn);
+  const dhead = 'getApplicationBox';
+  debug(dhead, { id, name });
+
+  // First, lookup application in algod
+  try {
+    await ensureNodeCanRead();
+    const client = await getAlgodClient();
+    const res = (await client.getApplicationBoxByName(id, name).do());
+    debug(dhead, 'node', res);
+    return { val: res.value };
+  } catch (e:any) {
+    debug(dhead, 'node err', e);
+    if ( e?.response?.body?.message === 'box not found' ) {
+      debug(dhead, 'node not found, returning');
+      return { exn: e };
+    }
+  }
+
+  // If algod couldn't find it, lookup application in indexer
+  const indexer = await getIndexer();
+  const query = indexer.lookupApplicationBoxByIDandName(id, name) as unknown as ApiCall<Box>;
+  const queryRes = await doQueryM_(dhead, query);
+  debug(dhead, { queryRes });
+
+  if ('val' in queryRes) {
+    return { val: queryRes.val.value };
+  } else {
+    return queryRes;
+  }
 };
 
 const getApplicationInfoM = async (idn:BigNumber): Promise<OrExn<AppInfo>> => {
@@ -1431,7 +1508,6 @@ const getDeletedApplicationInfoM = async (id: number): Promise<OrExn<AppInfo>> =
   }
 }
 
-
 const getLocalState_ = async (addr: Address, ApplicationID: BigNumber): Promise<AppStateKVs | undefined> => {
   const dhead = 'getLocalState';
   if (await nodeCanRead()) {
@@ -1451,6 +1527,29 @@ const getLocalState_ = async (addr: Address, ApplicationID: BigNumber): Promise<
     const appLocalState = appsLocalStates.find(app => ApplicationID.eq(app['id']));
     return appLocalState?.['key-value'];
   }
+};
+
+const makeGetKey = <K>(mapi:number) => async (kt:ConnectorTy, k:K, vt:ConnectorTy): Promise<[string, number]> => {
+  debug('makeGetKey', { mapi, kt, k, vt });
+  // This mimics ALGO.hs/cMapKey
+  const la = kt.netSize;
+  const isByte = mapi <= 255;
+  const rawLen = 1 + la;
+  const canBeRaw = isByte && rawLen <= algoMaxAppKeyLen;
+  debug('makeGetKey', { la, isByte, rawLen, canBeRaw });
+  const r = (canBeRaw ? (() => {
+    const bs = ethers.utils.concat([new Uint8Array([mapi]), kt.toNet((k as unknown) as CBR_Val)]);
+    debug('makeGetKey', { bs });
+    return buf_to_hex(arr_to_buf(bs));
+  }) : (() => {
+    const mapit = T_UInt;
+    return digest([mapit, kt], [mapi, k]);
+  }))();
+  debug('makeGetKey', { r });
+  const rlen = (r.length - 2) / 2;
+  const len = rlen + vt.netSize;
+  const mbr = 2500 + 400 * len;
+  return [ r, mbr ];
 };
 
 const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> => {
@@ -1479,23 +1578,14 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
     ensureConnectorAvailable(bin, 'ALGO', reachBackendVersion, reachAlgoBackendVersion);
     must_be_supported(bin);
 
-    const { stateSize, stateKeys, mapDataKeys, mapDataSize, ABI, companionInfo } = bin._Connectors.ALGO;
+    const { stateSize, stateKeys, ABI, companionInfo } = bin._Connectors.ALGO;
     const hasCompanion = companionInfo !== null;
-    const hasMaps = mapDataKeys > 0;
-    const { mapDataTy } = bin._getMaps({reachStdlib: stdlib});
-    const emptyMapDataTy = T_Bytes(mapDataTy.netSize);
-    const emptyMapData =
-      // This is a bunch of Nones
-      mapDataTy.fromNet(
-        emptyMapDataTy.toNet(emptyMapDataTy.canonicalize('')));
-    debug({ emptyMapData });
 
     type GlobalState = [BigNumber, BigNumber, ContractInfo];
     type ContractHandler = {
       ApplicationID: BigNumber,
       Deployer: Address,
-      viewMapRef: (mapi:number, a:Address) => Promise<any>,
-      ensureOptIn: (() => Promise<void>),
+      viewMapRef: <K, A>(mapi:number, kt:ConnectorTy, k:K, vt:ConnectorTy) => Promise<MaybeRep<A>>,
       getAppState: (() => Promise<AppStateKVs|undefined>),
       getGlobalState: ((appSt_g?:AppStateKVs|undefined) => Promise<GlobalState|undefined>),
       canIWin: ((lct:BigNumber) => Promise<boolean>),
@@ -1527,27 +1617,6 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
 
         const ctcAddr = algosdk.getApplicationAddress(bigNumberToBigInt(ApplicationID));
         debug(label, 'getC', { ctcAddr });
-
-        // Read map data
-        const getLocalState = async (addr: Address): Promise<AppStateKVs | undefined> => {
-          return await getLocalState_(addr, ApplicationID);
-        }
-
-        // Application Local State Opt-in
-        const didOptIn = async (): Promise<boolean> =>
-          (await doAccountAppOptedIn(thisAcc.addr, ApplicationID));
-        const doOptIn = async (): Promise<void> =>
-          (await doAccountAppOptIn(thisAcc, ApplicationID));
-
-        let ensuredOptIn: boolean = false;
-        const ensureOptIn = async (): Promise<void> => {
-          if ( ! ensuredOptIn ) {
-            if ( ! await didOptIn() ) {
-              await doOptIn();
-            }
-            ensuredOptIn = true;
-          }
-        };
 
         let lastAppState : AppStateKVs|undefined = undefined;
         let lastAppStateTime : number = 0;
@@ -1595,23 +1664,19 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
         const isin = (await getProvider()).isIsolatedNetwork;
         const isIsolatedNetwork = () => isin;
 
-        const viewMapRef = async (mapi: number, a:Address): Promise<any> => {
-          debug('viewMapRef', { mapi, a });
-          const ls = await getLocalState(cbr2algo_addr(a));
-          if ( ls === undefined ) { return ['None', null]; }
-          debug('viewMapRef', { ls });
-          const mbs = recoverSplitBytes('m', mapDataSize, mapDataKeys, ls);
-          debug('viewMapRef', { mbs });
-          if ( mbs === undefined ) { return ['None', null]; }
-          const md = mapDataTy.fromNet(mbs);
-          debug('viewMapRef', { md });
-          // @ts-ignore
-          const mr = md[mapi];
-          assert(mr !== undefined, 'viewMapRef mr undefined');
-          return mr;
+        const viewMapRef = async <K, A>(mapi:number, kt:ConnectorTy, k:K, vt:ConnectorTy): Promise<MaybeRep<A>> => {
+          debug('viewMapRef', { mapi, kt, k, vt });
+          const [f, mbr] = await makeGetKey(mapi)(kt, k, vt); void mbr;
+          debug('viewMapRef', { f });
+          const vbsm = await getApplicationBoxM(ApplicationID, buf_to_arr(hex_to_buf(f)));
+          debug('viewMapRef', { vbsm });
+          if ( 'exn' in vbsm ) { return ['None', null]; }
+          const v = vt.fromNet(vbsm.val) as A;
+          debug('viewMapRef', { v });
+          return ['Some', v];
         };
 
-        return (_theC = { ApplicationID, ctcAddr, Deployer, getAppState, getGlobalState, ensureOptIn, canIWin, isIsolatedNetwork, viewMapRef });
+        return (_theC = { ApplicationID, ctcAddr, Deployer, getAppState, getGlobalState, canIWin, isIsolatedNetwork, viewMapRef });
       };
     };
 
@@ -1680,10 +1745,9 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
         return ans;
       };
 
-      const apiMapRef = (i:number, ty:AnyALGO_Ty): MapRefT<any> => async (f:string): Promise<MaybeRep<any>> => {
-        void(ty);
+      const apiMapRef = <K, A>(i:number): MapRefT<K, A, ConnectorTy> => async (kt:ConnectorTy, k:K, vt:ConnectorTy): Promise<MaybeRep<A>> => {
         const { viewMapRef } = await getC();
-        return await viewMapRef(i, f);
+        return await viewMapRef(i, kt, k, vt);
       };
 
       const simTokenAccepted = async (sim_r:any, addr:any, tok:any): Promise<boolean> => {
@@ -1729,7 +1793,7 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
                 algosdk.OnApplicationComplete.NoOpOC,
                 base64ToUI8A(appApproval),
                 base64ToUI8A(appClear),
-                appLocalStateNumUInt, appLocalStateNumBytes + mapDataKeys,
+                appLocalStateNumUInt, appLocalStateNumBytes,
                 appGlobalStateNumUInt, appGlobalStateNumBytes + stateKeys,
                 undefined, undefined, undefined, undefined,
                 NOTE_Reach_tag(createTag++), undefined, undefined, extraPages)));
@@ -1744,7 +1808,7 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
           setTrustedVerifyResult({ ApplicationID, Deployer });
           setInfo(ctcInfo);
         }
-        const { ApplicationID, ctcAddr, Deployer, ensureOptIn, canIWin, isIsolatedNetwork } = await getC();
+        const { ApplicationID, ctcAddr, Deployer, canIWin, isIsolatedNetwork } = await getC();
 
         const [ value, toks ] = pay;
         void(toks); // <-- rely on simulation because of ordering
@@ -1774,25 +1838,11 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
         };
         const sim_r = await sim_p( fake_res );
         debug(dhead , '--- SIMULATE', sim_r);
-        if ( isCtor ) {
-          const amt =
-            hasCompanion ?
-              minimumBalance.mul(2) :
-              minimumBalance;
-          sim_r.txns.unshift({
-            kind: 'to',
-            amt: amt,
-            tok: undefined,
-          });
-        }
         const { isHalt } = sim_r;
-
-        // Maps
-        if ( hasMaps ) { await ensureOptIn(); }
-        const { mapRefs } = sim_r;
+        const appIndex = bigNumberToNumber(ApplicationID);
 
         while ( true ) {
-          const params = await getTxnParams(dhead);
+          const params = await adjustTxnParams(pks, srargs, await getTxnParams(dhead));
           // We add one, because the firstRound field is actually the current
           // round, which we couldn't possibly be in, because it already
           // happened.
@@ -1821,7 +1871,21 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
             debug(`recordAccount`, {addr});
             recordAccount_(addr);
           };
-          mapRefs.forEach(recordAccount);
+
+          const boxesArr: Array<BoxReference> = [ ];
+          const recordBox_ = (brx:BoxReference) => {
+            if ( ! boxesArr.some((bry:BoxReference): boolean => {
+              return (brx.appIndex === bry.appIndex) &&
+                (brx.name.toString() === bry.name.toString());
+            }) ) {
+              boxesArr.push(brx);
+            }
+          };
+          const recordBoxRemote = (smr:SimBoxRef) => {
+            const [ app, names ] = smr;
+            const name = T_Bytes(64).toNet(names);
+            recordBox_({ appIndex: bigNumberToNumber(app), name });
+          };
 
           const foreignArr: Array<number> = [ ];
           const recordApp = (app:ContractInfo) => {
@@ -1830,6 +1894,7 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
               foreignArr.push(appn);
             }
           };
+
           const assetsArr: number[] = [];
           const recordAsset = (tok:BigNumber|undefined) => {
             if ( tok ) {
@@ -1839,8 +1904,10 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
               }
             }
           };
+
           let extraFees: number = 0;
           let howManyMoreFees: number = 0;
+          let mbrDelta: BigNumber = bigNumberify(0);
           const txnExtraTxns: Array<Transaction> = [];
           let sim_i = 0;
           let whichApi : string|undefined;
@@ -1848,6 +1915,7 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
             dr.toks.map(recordAsset);
             dr.accs.map(recordAccount);
             dr.apps.map(recordApp);
+            dr.boxes.map(recordBoxRemote);
             howManyMoreFees +=
               1
               + bigNumberToNumber(dr.pays)
@@ -1856,26 +1924,31 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
             return;
           }
           const processSimTxn = (t: SimTxn) => {
+            debug('processSimTxn', t);
             let txn;
-            if ( t.kind === 'contractNew' ) {
-              processSimTxn({
-                kind: 'to',
-                amt: minimumBalance_app_create(t.cns[connector]),
-                tok: undefined,
-              });
+            if ( t.kind === 'mapOp' ) {
+              const { smr } = t;
+              const { key, kind, mbr } = smr;
+              if ( kind === 'del' ) {
+                mbrDelta = mbrDelta.sub(mbr);
+              } else if ( kind === 'setNew' ) {
+                mbrDelta = mbrDelta.add(mbr);
+              }
+              const name = buf_to_arr(hex_to_buf(key));
+              recordBox_({ appIndex, name });
+              return;
+            } else if ( t.kind === 'contractNew' ) {
+              mbrDelta = mbrDelta.add(minimumBalance_app_create(t.cns[connector]));
               processRemote(t.remote);
               return;
             } else if ( t.kind === 'tokenNew' ) {
-              processSimTxn({
-                kind: 'to',
-                amt: minimumBalance,
-                tok: undefined,
-              });
+              mbrDelta = mbrDelta.add(minimumBalance);
               howManyMoreFees++; return;
             } else if ( t.kind === 'tokenBurn' ) {
               // There's no burning on Algorand
               return;
             } else if ( t.kind === 'tokenDestroy' ) {
+              mbrDelta = mbrDelta.sub(minimumBalance);
               recordAsset(t.tok);
               howManyMoreFees++; return;
             } else if ( t.kind === 'tokenAccepted' ) {
@@ -1900,16 +1973,14 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
                 recordAccount(t.to);
                 howManyMoreFees++; return;
               } else if ( t.kind === 'init' ) {
-                processSimTxn({
-                  kind: 'to',
-                  amt: minimumBalance,
-                  tok: undefined,
-                });
+                mbrDelta = mbrDelta.add(minimumBalance);
                 recordAsset(tok);
+                // This fee is to send the opt-in
                 howManyMoreFees++; return;
               } else if ( t.kind === 'halt' ) {
                 if ( tok ) { recordAsset(tok); }
                 recordAccount_(Deployer);
+                // This fee is for the closeOut
                 howManyMoreFees++; return;
               } else if ( t.kind === 'to' ) {
                 from = thisAcc.addr;
@@ -1925,13 +1996,16 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
             }
             extraFees += txn.fee;
             txn.fee = 0;
-            txnExtraTxns.push(txn);
+            txnExtraTxns.unshift(txn);
           };
+          if ( isCtor ) {
+            const pc = hasCompanion ? 2 : 1;
+            mbrDelta = mbrDelta.add(minimumBalance.mul(pc));
+          }
+
           sim_r.txns.forEach(processSimTxn);
           if ( hasCompanion ) {
             if ( isCtor ) {
-              // XXX Algorand says I won't need this eventually
-              recordApp(bigNumberify(0));
               howManyMoreFees++;
             }
             const addCompanion = () => {
@@ -1943,64 +2017,104 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
               }
             };
             const readCI = (lab:string) => companionInfo[lab]||0;
-            const companionCalls = readCI(`publish${funcNum}`) + (whichApi ? readCI(`api_${whichApi}`) : 0);
-            debug('companion', { whichApi, companionCalls, companionInfo });
+            const ccPublish = `_reachp_${funcNum}`;
+            const ccApi = `_api_${whichApi}${funcNum}`;
+            const companionCalls = readCI(ccPublish) + (whichApi ? readCI(ccApi) : 0);
+            debug('companion', { whichApi, ccPublish, ccApi, companionCalls, companionInfo });
             if ( companionCalls > 0 ) {
+              // These fees are for the calls we'll make
               howManyMoreFees += companionCalls;
               addCompanion();
             }
             if ( isHalt ) {
               addCompanion();
+              // This fee is for the delete
               howManyMoreFees++;
+              mbrDelta = mbrDelta.sub(minimumBalance);
             }
           }
+
+          debug(dhead, { mbrDelta });
+          // If the delta is 0, there's no reason to update the MBR
+          if ( ! mbrDelta.eq(0) ) {
+            if ( mbrDelta.lt(0) ) {
+              // The delta is negative, so we let the contract pay the deployer
+              recordAccount_(Deployer);
+              howManyMoreFees++;
+            } else {
+              // The delta is positive, so we need to pay the contract
+              processSimTxn({
+                kind: 'to',
+                amt: mbrDelta,
+                tok: undefined,
+              });
+            }
+          }
+
           debug(dhead, 'txnExtraTxns', txnExtraTxns);
           debug(dhead, {howManyMoreFees, extraFees});
           extraFees += MinTxnFee * howManyMoreFees;
           debug(dhead, {extraFees});
 
           debug(dhead, 'MAP', { mapAccts });
-          if ( mapAccts.length > MaxAppTxnAccounts ) {
-            throw Error(`Application references too many local state cells in one step. Reach should catch this problem statically.`);
+          if ( mapAccts.length > algoMaxAppTxnAccounts ) {
+            throw Error(`Application references too many accounts in one step. Reach should catch this problem statically.`);
           }
           const mapAcctsVal =
             (mapAccts.length === 0) ? undefined : mapAccts;
 
+          if ( assetsArr.length > algoMaxAppTxnForeignAssets ) {
+            throw Error(`Application references too many foreign assets in one step. Reach should catch this problem statically.`);
+          }
           const assetsVal: number[]|undefined =
             (assetsArr.length === 0) ? undefined : assetsArr;
           debug(dhead, {assetsArr, assetsVal});
 
+          if ( boxesArr.length > algoMaxAppBoxReferences ) {
+            throw Error(`Application references too many boxes in one step. Reach should catch this problem statically.`);
+          }
+          const boxesVal: BoxReference[]|undefined =
+            (boxesArr.length === 0) ? undefined : boxesArr;
+          debug(dhead, {boxesArr, boxesVal});
+
+          if ( foreignArr.length > algoMaxAppTxnForeignApps ) {
+            throw Error(`Application references too many foreign applications in one step. Reach should catch this problem statically.`);
+          }
           const foreignVal: number[]|undefined =
             (foreignArr.length === 0) ? undefined : foreignArr;
           debug(dhead, {foreignArr, foreignVal});
 
-          const actual_args = [ lct, msg ];
-          const actual_tys = [ T_UInt, T_Tuple(msg_tys) ];
+          if ( (mapAccts.length + assetsArr.length + boxesArr.length + foreignArr.length) > algoMaxAppTotalTxnReferences ) {
+            throw Error(`Application references too many transaction references in one step. Reach should catch this problem statically.`);
+          }
+
+          const actual_args = [ [ lct, ...msg ] ];
+          const actual_tys = [ T_Tuple([ T_UInt, ...msg_tys]) ];
           debug(dhead, '--- ARGS =', actual_args);
 
           const safe_args: Array<NV> = actual_args.map(
             // @ts-ignore
             (m, i) => actual_tys[i].toNet(m));
-          safe_args.unshift(new Uint8Array([funcNum]));
-          safe_args.unshift(new Uint8Array([0]));
-          safe_args.forEach((x) => {
-            if (! ( x instanceof Uint8Array ) ) {
-              // The types say this is impossible now,
-              // but we'll leave it in for a while just in case...
-              throw Error(`expect safe program argument, got ${j2s(x)}`);
-            }
-          });
+          const sc = makeSignatureChecker(`_reachp_${funcNum}`, actual_tys, T_Null);
+          safe_args.unshift(sc.ui8);
           debug(dhead, '--- PREPARE:', safe_args.map(ui8h));
 
           const whichAppl =
             isHalt ?
             // We are treating it like any party can delete the application, but the docs say it may only be possible for the creator. The code appears to not care: https://github.com/algorand/go-algorand/blob/0e9cc6b0c2ddc43c3cfa751d61c1321d8707c0da/ledger/apply/application.go#L589
-            algosdk.makeApplicationDeleteTxn :
-            algosdk.makeApplicationNoOpTxn;
-          const txnAppl =
-            whichAppl(
-              thisAcc.addr, params, bigNumberToNumber(ApplicationID), safe_args,
-              mapAcctsVal, foreignVal, assetsVal, NOTE_Reach);
+            algosdk.makeApplicationDeleteTxnFromObject :
+            algosdk.makeApplicationNoOpTxnFromObject;
+          const txnAppl = whichAppl({
+            from: thisAcc.addr,
+            suggestedParams: params,
+            appIndex,
+            appArgs: safe_args,
+            accounts: mapAcctsVal,
+            foreignApps: foreignVal,
+            foreignAssets: assetsVal,
+            boxes: boxesVal,
+            note: NOTE_Reach,
+          });
           txnAppl.fee += extraFees;
           const rtxns = [ ...txnExtraTxns, txnAppl ];
           debug(dhead, `assigning`, { rtxns });
@@ -2066,12 +2180,13 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
         // ^ XXX it would be nice if Reach could support variables bound to
         // promises and then we wouldn't need to wait here.
 
-        const lr = makeLogRep(reachEvent(funcNum), out_tys);
-        const ctc_args = lr.parse0(txn);
-        debug(dhead, {ctc_args});
-        if ( ctc_args === undefined ) {
+        const lr = makeHasLogForR(funcNum, out_tys);
+        const raw_ctc_evt = lr.parse0(txn);
+        debug(dhead, {raw_ctc_evt});
+        if ( raw_ctc_evt === undefined ) {
           throw Error(`impossible: txn doesn't have right log as first`);
         }
+        const ctc_args = raw_ctc_evt.splice(1); // dropping time
 
         const fromAddr = txn['sender'];
         const from = T_Address.canonicalize({addr: fromAddr});
@@ -2148,7 +2263,7 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
         return result;
       }
 
-      return { getContractInfo, getContractAddress, getContractCompanion, getBalance, getState, getCurrentStep, sendrecv, recv, apiMapRef, simTokenAccepted };
+      return { getContractInfo, getContractAddress, getContractCompanion, getBalance, getState, getCurrentStep, sendrecv, recv, apiMapRef, simTokenAccepted, makeGetKey };
     };
 
     const readStateBytes = (prefix:string, key:number[], src:AppStateKVs): (Uint8Array|undefined) => {
@@ -2186,10 +2301,10 @@ const connectAccount = async (networkAccount: NetworkAccount): Promise<Account> 
     const setupView = (setupViewArgs: SetupViewArgs) => {
       const eq = newEventQueue();
       const getC = makeGetC(setupViewArgs, eq);
-      const viewLib: IViewLib = {
-        viewMapRef: async (mapi: number, a:Address): Promise<any> => {
+      const viewLib: IViewLib<Ty> = {
+        viewMapRef: async <K, A>(mapi:number, kt:ConnectorTy, k:K, vt:ConnectorTy): Promise<MaybeRep<A>> => {
           const { viewMapRef } = await getC();
-          return await viewMapRef(mapi, a);
+          return await viewMapRef(mapi, kt, k, vt);
         },
       };
       const getView1 = (vs:BackendViewsInfo, v:string, k:string|undefined, vim: BackendViewInfo, isSafe = true) =>
@@ -2462,9 +2577,6 @@ const doAccountAppOptIn = async (nacc: NetworkAccount, ctcId: ContractInfo): Pro
         bigNumberToNumber(ctcId),
         undefined, undefined, undefined, undefined,
         NOTE_Reach)));
-    // We are commenting this out because the above ^ might not be
-    // propagated to Indexer on the CI fast enough.
-    // assert(await accountAppOptedIn(acc, ctc), `didOptIn after doOptIn`);
   }
 };
 
@@ -2567,9 +2679,18 @@ const newAccountFromSecret = (sk: SecretKeyInput): Promise<Account> =>
   newAccountFromMnemonic(algosdk.secretKeyToMnemonic(protectSecretKey(sk, 32)));
 
 const getNetworkTime = async (): Promise<BigNumber> => {
-  const indexer = await getIndexer();
-  const hc = await indexer.makeHealthCheck().do();
-  return bigNumberify(hc['round']);
+  const client = await getAlgodClient();
+  try {
+    const st = await client.status().do();
+    debug(`getNetworkTime node`, st);
+    return bigNumberify(st['last-round']);
+  } catch (e:any) {
+    debug(`getNetworkTime`, `node failed`, e);
+    const indexer = await getIndexer();
+    const hc = await indexer.makeHealthCheck().do();
+    debug(`getNetworkTime indexer`, hc);
+    return bigNumberify(hc['round']);
+  }
 };
 const getTimeSecs = async (now_bn: BigNumber): Promise<BigNumber> => {
   const now = bigNumberToNumber(now_bn);
@@ -2629,7 +2750,7 @@ const verifyContract_ = async (label:string, info: ContractInfo, bin: Backend, e
   must_be_supported(bin);
   // @ts-ignore
   const ApplicationID: BigNumber = protect(T_Contract, info);
-  const { appApproval, appClear, mapDataKeys, stateKeys } =
+  const { appApproval, appClear, stateKeys } =
     bin._Connectors.ALGO;
 
   let dhead = `${label}: verifyContract`;
@@ -2664,7 +2785,7 @@ const verifyContract_ = async (label:string, info: ContractInfo, bin: Backend, e
   const Deployer = appInfo_p['creator'];
 
   const appInfo_LocalState = appInfo_p['local-state-schema'];
-  chkeq_bn(appInfo_LocalState['num-byte-slice'], appLocalStateNumBytes + mapDataKeys, `Num of byte-slices in local state schema does not match Reach backend`);
+  chkeq_bn(appInfo_LocalState['num-byte-slice'], appLocalStateNumBytes, `Num of byte-slices in local state schema does not match Reach backend`);
   chkeq_bn(appInfo_LocalState['num-uint'], appLocalStateNumUInt, `Num of uints in local state schema does not match Reach backend`);
 
   const appInfo_GlobalState = appInfo_p['global-state-schema'];
@@ -2775,6 +2896,7 @@ const launchToken = async (accCreator: Account, name: string, sym: string, opts:
     parseCurrency, minimumBalance, formatCurrency,
     reachStdlib, algosdk,
     connector, standardUnit, atomicUnit,
-    tokensAccepted
+    tokensAccepted,
+    setAdjustTxnParams,
   });
 };

@@ -44,24 +44,6 @@ setOptions({});
 
 The @{defn("compilation options")} for the DApp may be set by calling `{!rsh} setOptions(OBJ_EXPR);` where `{!rsh} OBJ_EXPR` is an object with the following keys and values:
 
-+ @{ref("rsh", "untrustworthyMaps")} `{!rsh} untrustworthyMaps`
-
-  `{!rsh} true` or `{!rsh} false` (default)
-
-  Determines whether mappings are treated as trustworthy.
-  A mapping is trustworthy if its values are guaranteed to be preserved across interactions.
-  When this is `{!rsh} true`, the verifier will enforce that your program does not rely on values being preserved.
-
-  See example below:
-  ```reach
-  load: /examples/map-simpl/index.rsh
-  md5: 2d6c1487d7b96d41016e067c9cd265ef
-  range: 4 - 6
-  ```
-
-  Reach cannot provide trustworthy mappings with some connectors; therefore it is dangerous to not set this to `{!rsh} true` on such connectors.
-  Reach will emit a warning during compilation if you do such a dangerous thing.
-
 + @{ref("rsh", "verifyArithmetic")} `{!rsh} verifyArithmetic`
 
   `{!rsh} true` or `{!rsh} false` (default)
@@ -124,6 +106,17 @@ The @{defn("compilation options")} for the DApp may be set by calling `{!rsh} se
   md5: bbc008ebb7dc3c5b757ce20eb95bbbe9
   range: 4 - 11
   ```
+
++ @{ref("rsh", "ALGOExitMode")} `{!rsh} ALGOExitMode`
+
+  Determines the way that applications on Algorand interpret `{!rsh} exit`, as follows:
+  * (default) `{!rsh} 'DeleteAndCloseOutAll_SoundASAs_UnsoundElse'`: The application will expect the final transaction to be tagged with the `DeleteApplication` `OnCompletion` flag and will issue `CloseOut` transactions for all of the ASAs the application holds and then a `CloseOut` transaction for the application's account.
+    This is unsound, because Reach does not automatically include `{!rsh} assert`s that ensure that (a) all child applications are deleted and (b) all boxes are freed.
+    If either of those constraints are not satisfied, then the attempt to close out will fail and the transaction will be reverted, so you should include these assertions yourself to ensure it is sound.
+    (See the `api-map` example for how to do this effectively.)
+    A future version of Reach will offer more modes that are guaranteed to be sound.
+  * `{!rsh} 'DeleteAndCloseOutASAs'`: The application will expect the final transaction to be tagged with the `DeleteApplication` `OnCompletion` flag and will issue `CloseOut` transactions for all of the ASAs the application holds and a `Pay` transaction for the non-minimum balance portion of the application's account.
+    This will always succeed, but it means that some ALGOs will be locked away forever.
 
 ## {#ref-programs-appinit-exprs} Expressions
 
@@ -195,7 +188,7 @@ Each function must occur in the entire program and may only appear once in each 
 
 ```
 load: /examples/dominant-assurance/index.rsh
-md5: d327454b582bdfa6f03d71de5ce2dd97
+md5: 4905da78b4a84e0e79914f97613dc4b6
 range: 24-27
 ```
 
@@ -278,7 +271,7 @@ range: 10 - 13
 While the `{!rsh} Events` in following example has an `{!rsh} eventName`:
 ```reach
 load: /examples/dominant-assurance/index.rsh
-md5: d327454b582bdfa6f03d71de5ce2dd97
+md5: 4905da78b4a84e0e79914f97613dc4b6
 range: 34 - 35
 ```
 

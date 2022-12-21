@@ -245,7 +245,7 @@ instance IsDynamic SLPrimitive where
     SLPrim_race -> False
     SLPrim_Map -> False
     SLPrim_Map_new -> False
-    SLPrim_Map_reduce -> False
+    SLPrim_Map_reduce _ -> False
     SLPrim_Participant -> False
     SLPrim_ParticipantClass -> False
     SLPrim_View -> False
@@ -293,6 +293,7 @@ instance IsDynamic SLPrimitive where
     SLPrim_remotef {} -> True
     SLPrim_viewis {} -> True
     SLPrim_event_is {} -> True
+    SLPrim_ALGOBlockField {} -> False
 
 instance IsDynamic SLForm where
   isDynamic = \case
@@ -310,7 +311,7 @@ instance IsDynamic SLForm where
     SLForm_apiCall -> False
     SLForm_apiCall_partial {} -> True
     SLForm_wait -> False
-    SLForm_setApiDetails -> True
+    SLForm_setApiDetails -> False
 
 instance IsDynamic SLVal where
   isDynamic = \case
@@ -951,7 +952,7 @@ data SLPrimitive
   | SLPrim_race
   | SLPrim_Map
   | SLPrim_Map_new
-  | SLPrim_Map_reduce
+  | SLPrim_Map_reduce Bool
   | SLPrim_Participant
   | SLPrim_ParticipantClass
   | SLPrim_View
@@ -998,6 +999,7 @@ data SLPrimitive
   | SLPrim_toStringDyn
   | SLPrim_Bytes_fromHex
   | SLPrim_Contract_fromAddress
+  | SLPrim_ALGOBlockField ALGOBlockField
   deriving (Eq, Generic)
 
 instance Equiv SLPrimitive where

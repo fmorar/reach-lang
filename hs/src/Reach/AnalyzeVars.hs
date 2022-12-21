@@ -112,9 +112,8 @@ instance FreeVars DLRemoteALGOSTR where
     RA_Tuple t -> freeVars t
 
 instance FreeVars DLRemoteALGO where
-  freeVars (DLRemoteALGO a b c d e f g h i j k) =
-    freeVars a <> freeVars b <> freeVars c <> freeVars d <> freeVars e <> freeVars f <>
-    freeVars g <> freeVars h <> freeVars i <> freeVars j <> freeVars k
+  freeVars (DLRemoteALGO {..}) =
+    freeVars ra_fees <> freeVars ra_accounts <> freeVars ra_assets <> freeVars ra_addr2acc <> freeVars ra_apps <> freeVars ra_boxes <> freeVars ra_onCompletion <> freeVars ra_strictPay <> freeVars ra_rawCall <> freeVars ra_simNetRecv <> freeVars ra_simTokensRecv <> freeVars ra_simReturnVal
 
 instance FreeVars DLTokenNew where
   freeVars (DLTokenNew a b c d e f) = freeVars [a, b, c, d, e] <> freeVars f
@@ -150,8 +149,8 @@ instance FreeVars DLExpr where
     DLE_CheckPay _ _ a b -> freeVars a <> freeVars b
     DLE_Wait _ a -> freeVars a
     DLE_PartSet _ _ a -> freeVars a
-    DLE_MapRef _ _ a -> freeVars a
-    DLE_MapSet _ _ a b -> freeVars a <> freeVars b
+    DLE_MapRef _ _ a _ -> freeVars a
+    DLE_MapSet _ _ a _ b -> freeVars a <> freeVars b
     DLE_Remote _ _ a _ dr -> freeVars a <> freeVars dr
     DLE_TokenNew _ a -> freeVars a
     DLE_TokenBurn _ a b -> freeVars [a, b]
@@ -176,15 +175,25 @@ instance BoundVars DLLetVar where
     DLV_Eff -> mempty
     DLV_Let _ v -> boundVars v
 
+instance FreeVars DLVarLet where
+  freeVars (DLVarLet _ v) = freeVars v
+instance BoundVars DLVarLet where
+  boundVars (DLVarLet _ v) = boundVars v
+
 instance FreeVars v => FreeVars [v] where
   freeVars = mconcat . map freeVars
 instance BoundVars v => BoundVars [v] where
   boundVars = mconcat . map boundVars
 
-instance {-# OVERLAPS #-} FreeVars k => FreeVars (SwitchCases k) where
-  freeVars m = mconcat $ map (\(v, _, k) -> S.difference (freeVars k) (boundVars v)) $ M.elems m
-instance {-# OVERLAPS #-} BoundVars k => BoundVars (SwitchCases k) where
-  boundVars m = mconcat $ map (\(v, _, k) -> (boundVars k) <> (boundVars v)) $ M.elems m
+instance FreeVars k => FreeVars (SwitchCase k) where
+  freeVars (SwitchCase {..}) = freeVars sc_k
+instance BoundVars k => BoundVars (SwitchCase k) where
+  boundVars (SwitchCase {..}) = boundVars sc_vl <> boundVars sc_k
+
+instance FreeVars k => FreeVars (SwitchCases k) where
+  freeVars (SwitchCases m) = mconcat $ map freeVars $ M.elems m
+instance BoundVars k => BoundVars (SwitchCases k) where
+  boundVars (SwitchCases m) = mconcat $ map boundVars $ M.elems m
 
 bindsFor :: (FreeVars a, BoundVars a, FreeVars b) => a -> b -> S.Set DLVar
 bindsFor o i = S.difference (freeVars i) (boundVars o) <> freeVars o
@@ -215,19 +224,19 @@ instance FreeVars DLStmt where
     DL_LocalIf _ _ c t f -> freeVars c <> freeVars [t, f]
     DL_LocalSwitch _ v csm -> freeVars v <> freeVars csm
     DL_Only _ _ t -> freeVars t
-    DL_MapReduce _ _ _ _ z a b f -> freeVars z <> bindsFor [a, b] f
+    DL_MapReduce _ _ _ _ z a k b f -> freeVars z <> bindsFor [a, k, b] f
     DL_LocalDo _ _ t -> freeVars t
 
 instance BoundVars DLStmt where
   boundVars = readMMap bvMap $ \case
     DL_Nop {} -> mempty
     DL_Let _ lv _ -> boundVars lv
-    DL_ArrayMap _ ans _ as i f -> boundVars (as <> [ans, i]) <> boundVars f
-    DL_ArrayReduce _ ans _ _ b as i f -> boundVars (as <> [ans, b, i]) <> boundVars f
+    DL_ArrayMap _ ans _ as i f -> boundVars (i : as) <> boundVars f <> boundVars ans
+    DL_ArrayReduce _ ans _ _ b as i f -> boundVars (b : i : as) <> boundVars f <> boundVars ans
     DL_Var _ v -> boundVars v
     DL_Set {} -> mempty
     DL_LocalIf _ _ _ t f -> boundVars [t, f]
     DL_LocalSwitch _ _ csm -> boundVars csm
     DL_Only _ _ t -> boundVars t
-    DL_MapReduce _ _ ans _ _ a b f -> boundVars [ans, a, b] <> boundVars f
+    DL_MapReduce _ _ ans _ _ a k b f -> boundVars [a, k, b] <> boundVars f <> boundVars ans
     DL_LocalDo _ _ t -> boundVars t

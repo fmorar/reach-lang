@@ -43,6 +43,9 @@ data KCtxt = KCtxt
   , ctxt_kg :: IORefRef (M.Map Point (S.Set Point))
   }
 
+class KGQ a where
+  kgq :: KCtxt -> a -> IO ()
+
 klog :: KCtxt -> String -> IO ()
 klog ctxt msg =
   case ctxt_mlog ctxt of
@@ -247,9 +250,9 @@ kgq_e ctxt mv = \case
     kgq_a_all ctxt amt
   DLE_PartSet _ _ arg ->
     kgq_a_all ctxt arg
-  DLE_MapRef _ mpv _ ->
+  DLE_MapRef _ mpv _ _ ->
     kgq_v_onlym ctxt mv $ S.singleton $ P_Map mpv
-  DLE_MapSet _ mpv _ mva ->
+  DLE_MapSet _ mpv _ _ mva ->
     knows ctxt (P_Map mpv) $ maybe mempty all_points mva
   DLE_Remote _ _ av _ dr -> do
     kgq_a_all ctxt av
@@ -276,40 +279,67 @@ kgq_e ctxt mv = \case
   DLE_TupleSet _ t _ v -> kgq_la ctxt mv (DLLA_Tuple [t, v])
   DLE_ContractFromAddress _ a -> kgq_a_all ctxt a
 
+  -- mapM_ cm1 csm
+  --   where
+  --     oa = DLA_Var ov
+  --     ctxt' = ctxt_add_back ctxt oa
+  --     cm1 (ov', _, l) =
+  --       kgq_a_only ctxt ov' oa
+  --         >> kgq_l ctxt' l
+
+instance KGQ a => KGQ (SwitchCasesUse a) where
+  kgq ctxt (SwitchCasesUse v m) = kgq ctxt' $ switchUses v m
+    where
+      oa = DLA_Var v
+      ctxt' = ctxt_add_back ctxt oa
+
+instance KGQ a => KGQ [a] where
+  kgq ctxt = mapM_ (kgq ctxt)
+
+instance KGQ a => KGQ (SwitchCaseUse a) where
+  kgq ctxt (SwitchCaseUse ov _ (SwitchCase {..})) =
+    ctxtNewScope ctxt $
+      kgq_a_only ctxt (varLetVar sc_vl) (DLA_Var ov)
+        >> kgq ctxt sc_k
+
+instance KGQ DLStmt where
+  kgq = kgq_m
+
+instance KGQ DLTail where
+  kgq = kgq_l
+
+instance KGQ LLConsensus where
+  kgq = kgq_n
+
 kgq_m :: KCtxt -> DLStmt -> IO ()
 kgq_m ctxt = \case
   DL_Nop _ -> mempty
   DL_Let _ lv de -> kgq_e ctxt (lv2mdv lv) de
   DL_ArrayMap _ ans xs as i (DLBlock _ _ f r) ->
-    zipWithM (kgq_a_only ctxt) as xs
-      >> kgq_a_all ctxt (DLA_Var i)
-      >> kgq_a_only ctxt ans r
+    zipWithM (kgq_a_only ctxt) (map vl2v as) xs
+      >> kgq_a_all ctxt (DLA_Var $ vl2v i)
+      >> kgq_a_onlym ctxt (lv2mdv ans) r
       >> kgq_l ctxt f
   DL_ArrayReduce _ ans xs z b as i (DLBlock _ _ f r) ->
-    kgq_a_only ctxt b z
-      >> zipWithM (kgq_a_only ctxt) as xs
-      >> kgq_a_all ctxt (DLA_Var i)
-      >> kgq_a_only ctxt ans r
+    kgq_a_onlym ctxt (vl2mdv b) z
+      >> zipWithM (kgq_a_only ctxt) (map vl2v as) xs
+      >> kgq_a_all ctxt (DLA_Var $ vl2v i)
+      >> kgq_a_onlym ctxt (lv2mdv ans) r
       >> kgq_l ctxt f
   DL_Var {} -> mempty
   DL_Set _ dv da -> kgq_a_only ctxt dv da
   DL_LocalIf _ _ ca t f -> kgq_l ctxt' t >> kgq_l ctxt' f
     where
       ctxt' = ctxt_add_back ctxt ca
-  DL_LocalSwitch _ ov csm -> mapM_ cm1 csm
-    where
-      oa = DLA_Var ov
-      ctxt' = ctxt_add_back ctxt oa
-      cm1 (ov', _, l) =
-        kgq_a_only ctxt ov' oa
-          >> kgq_l ctxt' l
+  DL_LocalSwitch _ ov csm -> kgq ctxt $ SwitchCasesUse ov csm
   DL_Only _at (Left who) loc ->
     kgq_l (ctxt_restrict ctxt who) loc
   DL_Only {} -> impossible $ "right only before EPP"
-  DL_MapReduce _ _ ans x z b a (DLBlock _ _ f r) ->
-    kgq_a_only ctxt b z
+  DL_MapReduce _ _ ans x z b (DLVarLet _ k) (DLVarLet _ a) (DLBlock _ _ f r) ->
+    kgq_a_onlym ctxt (vl2mdv b) z
+      >> knows ctxt (P_Var k) (S.singleton (P_Map x))
       >> knows ctxt (P_Var a) (S.singleton (P_Map x))
-      >> kgq_a_only ctxt ans r
+      >> kgq_a_onlym ctxt (lv2mdv ans) r
       >> kgq_l ctxt f
   DL_LocalDo _ _ t -> kgq_l ctxt t
 
@@ -332,15 +362,7 @@ kgq_n ctxt = \case
       >> ctxtNewScope ctxt' (kgq_n ctxt' f)
     where
       ctxt' = ctxt_add_back ctxt ca
-  LLC_Switch _ ov csm ->
-    mapM_ cm1 csm
-    where
-      oa = DLA_Var ov
-      ctxt' = ctxt_add_back ctxt oa
-      cm1 (ov', _, n) =
-        ctxtNewScope ctxt' $
-          kgq_a_only ctxt' ov' oa
-            >> kgq_n ctxt' n
+  LLC_Switch _ ov csm -> kgq ctxt $ SwitchCasesUse ov csm
   LLC_FromConsensus _ _ _ k ->
     kgq_s ctxt k
   LLC_While _ asn _ (DLBlock _ _ cond_l ca) body k ->
@@ -409,10 +431,9 @@ kgq_lp mh vst (LLProg { llp_parts = (SLParts {..}), llp_step }) = do
   kgq_s ctxt llp_step
 
 verify_knowledge :: VerifySt -> LLProg -> IO ()
-verify_knowledge vst lp =
-  case mout of
-    Nothing -> go Nothing
-    Just p -> withFile p WriteMode (go . Just)
-  where
-    go mh = kgq_lp mh vst lp
-    mout = ($ "know") <$> (vo_out $ vst_vo vst)
+verify_knowledge vst lp = do
+  let go mh = kgq_lp mh vst lp
+  let (should, p) = vo_out (vst_vo vst) False "know"
+  case should of
+    False -> go Nothing
+    True -> withFile p WriteMode (go . Just)

@@ -492,7 +492,7 @@ It is written with the expression `{!rsh} new Token(PARAMS)`, where `{!rsh} PARA
 + `metadata`: A value of type `{!rsh} Bytes(32)`; defaults to empty.
 This value is intended to be a digest of a larger metadata document.
 + `supply`: A value of type `{!rsh} UInt`; defaults to `{!rsh} UInt.max`.
-+ `decimals`: A value of type `{!rsh} UInt`; defaults to `{!rsh} 6` on Algorand, and `{!rsh} 18` on Ethereum and Conflux.
++ `decimals`: A value of type `{!rsh} UInt`; defaults to `{!rsh} 6` on Algorand, and `{!rsh} 18` on Ethereum.
 
 The following examples demonstrate how the details above may be used:
 
@@ -606,6 +606,9 @@ In addition, a remote function may be augmented with one of the following operat
     If this is needed, and not included, then the consensus transfer to the current consensus step will fail with an insufficient fee error.
   + `{!rsh} opts.accounts` records extra accounts.
     If this is needed, and not included, then the consensus transfer to the current consensus step will fail with an invalid account reference.
+  + `{!rsh} opts.boxes` records extra boxes.
+    The values must be tuples of length two where the first is the application index and the second is the box name (as a byte string less than 64 bytes).
+    If this is needed, and not included, then the consensus transfer to the current consensus step will fail with an invalid box reference.
   + `{!rsh} opts.assets` records extra assets.
     If this is needed, and not included, then the consensus transfer to the current consensus step will fail with an invalid asset reference.
   + `{!rsh} opts.apps` records extra applications.
@@ -629,6 +632,8 @@ In addition, a remote function may be augmented with one of the following operat
   + `{!rsh} opts.simReturnVal` is a field whose type must match the returned type of the remote function (default depends on return type).
     The field represents the return value of the remote function, for the purposes of transaction simulation.
     This is useful when using `{!rsh} enforce` on the return value of the remote function.
+  + `{!rsh} opts.txnOrderForward` is a boolean (default `{!rsh} false`) that when `{!rsh} true` has the payment transactions in the forward order (net and then assets in order) rather than the reverse order (assets in reverse order and then net).
+    The default is suited for calling Reach servers.
 
 If the remote contract is not expected to return non-network tokens then a pair is returned, where the amount of network tokens received is the first element, and the original result is the second element.
 
@@ -656,7 +661,7 @@ const ctcMaybe = Contract.fromAddress(address);
 Takes an `{!rsh} Address}` and returns a `{!rsh} Maybe(Contract)`.
 
 On Algorand this always returns `{!rsh} None`.
-On Ethereum and Conflux, it returns `{!rsh} None` for addresses of externally owned accounts, and it returns `{!rsh} Some` for addresses of contracts under most circumstances.
+On Ethereum, it returns `{!rsh} None` for addresses of externally owned accounts, and it returns `{!rsh} Some` for addresses of contracts under most circumstances.
 However, it also returns `{!rsh} None` for addresses of contracts that are under construction, for addresses of contracts that have been destroyed, and for addresses of contracts that have not yet been created.
 
 
@@ -676,14 +681,14 @@ If `{!rsh} KEY_TYPE_EXPR` is not specified, it will default to `{!rsh} Address`.
 For example the code below contains only the `{!rsh} VAL_TYPE_EXPR`:
 ```reach
 load: /examples/splice1/index.rsh
-md5: 944291e790336dbb2b87784588d60eeb
+md5: 579fe539571f08bb14f260b064aa914a
 range: 7 - 7
 ```
 
 While the following code contains both the `{!rsh} KEY_TYPE_EXPR` and `{!rsh} VAL_TYPE_EXPR`:
 ```reach
 load: /examples/map-arbitrary-key/index.rsh
-md5: defd89926eddaf8f3a24ec9d2d4c9839
+md5: c8ae3b7ca85b7ba19bd01f6db107e66f
 range: 24 - 24
 ```
 
@@ -728,7 +733,7 @@ While the example below shows the usage of  `{!rsh} s.remove(ADDRESS)`
 
 ```reach
 load: /examples/dominant-assurance/index.rsh
-md5: d327454b582bdfa6f03d71de5ce2dd97
+md5: 4905da78b4a84e0e79914f97613dc4b6
 range: 144 - 144
 ```
 
@@ -738,7 +743,7 @@ The following example shows the usage of `{!rsh} s.member(ADDRESS)`
 
 ```reach
 load: /examples/dominant-assurance/index.rsh
-md5: d327454b582bdfa6f03d71de5ce2dd97
+md5: 4905da78b4a84e0e79914f97613dc4b6
 range: 99 - 99
 ```
 
@@ -792,3 +797,17 @@ Others, such as token payments, cannot work at all, because given that the contr
 
 On some connectors, like `{!rsh} ALGO`, it is necessary to delete child contracts before the parent exits.
 Reach does not yet enforce this property during verification, so if you fail to obey it, then your program will not be able to finish.
+
+### Algorand-specific block data access
+
+@{ref("rsh", "ALGO.blockSeed")}@{ref("rsh", "ALGO.blockSecs")}
+```reach
+ALGO.blockSeed(n)
+ALGO.blockSecs(n)
+```
+
+These functions return (respectively) the seed and the timestamp of the given block.
+The return data types are `{!rsh} Maybe(Bytes(32))` and `{!rsh} Maybe(UInt)`.
+
+These functions always return `{!rsh} Maybe.None`, unless called on Algorand on a block between "`txn.LastValid-1002` and `txn.FirstValid` (exclusive)", in which case they return `{!rsh} Maybe.Some`.
+Because of this constraint on the transaction validity time, it is not really possible to use these functions correctly without using `{!js} stdlib.setAdjustTxnParams`.

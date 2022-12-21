@@ -29,17 +29,17 @@ import Reach.AST.Base
 import Reach.AST.DLBase
 import Reach.AST.CL
 import Reach.CLike
-import Reach.CommandLine
 import Reach.Connector
 import Reach.Connector.ETH_solc
 import Reach.Counter
 import Reach.EmbeddedFiles
+import Reach.InterferenceGraph
+import Reach.OutputUtil
 import Reach.Texty
 import Reach.UnsafeUtil
 import Reach.Util
 import Reach.Version
 import System.FilePath
-import System.IO.Temp
 import Text.Printf
 import Safe.Foldable (maximumMay)
 
@@ -459,8 +459,8 @@ instance DepthOf DLExpr where
     DLE_CheckPay _ _ y z -> max <$> depthOf y <*> depthOf z
     DLE_Wait _ x -> depthOf x
     DLE_PartSet _ _ x -> depthOf x
-    DLE_MapRef _ _ x -> add1 $ depthOf x
-    DLE_MapSet _ _ x y -> max <$> depthOf x <*> depthOf y
+    DLE_MapRef _ _ x _ -> add1 $ depthOf x
+    DLE_MapSet _ _ x _ y -> max <$> depthOf x <*> depthOf y
     DLE_Remote _ _ av _ dr ->
       add1 $ max <$> depthOf av <*> depthOf dr
     DLE_TokenNew _ tns -> add1 $ depthOf tns
@@ -603,6 +603,7 @@ solPrimApply = \case
   GET_CONTRACT -> constr "payable(address(this))"
   GET_ADDRESS -> constr "payable(address(this))"
   GET_COMPANION -> impossible "GET_COMPANION"
+  ALGO_BLOCK _ -> impossible "ALGO_BLOCK"
   where
     app f args = return $ solApply f args
     constr = const . return
@@ -822,16 +823,16 @@ solExpr sp = \case
           solApply "checkPayAmt" ["msg.sender", tok', amt']
   DLE_Wait {} -> return emptyDoc
   DLE_PartSet _ _ a -> spa $ solF a
-  DLE_MapRef _ mpv fa -> do
+  DLE_MapRef _ mpv fa _ -> do
     fa' <- mapRefArg fa
     return $ solApply (solMapRefInt mpv) [fa'] <> sp
-  DLE_MapSet _ mpv fa (Just na) -> do
+  DLE_MapSet _ mpv fa _ (Just na) -> do
     fa' <- mapRefArg fa
     vsep <$> solLargeArg' True (solArrayRef (solMapVar mpv) fa') nla
     where
       nla = mdaToMaybeLA na_t (Just na)
       na_t = argTypeOf na
-  DLE_MapSet _ mpv fa Nothing -> do
+  DLE_MapSet _ mpv fa _ Nothing -> do
     fa' <- mapRefArg fa
     return $ "delete" <+> solArrayRef (solMapVar mpv) fa' <> sp
   DLE_Remote {} -> impossible "remote"
@@ -894,18 +895,18 @@ arraySize a =
     _ -> impossible "arraySize"
 
 solSwitch :: SolStmts k => SrcLoc -> DLVar -> SwitchCases k -> App [Doc]
-solSwitch _at ov csm = do
+solSwitch _at ov (SwitchCases csm) = do
   ovp <- solF ov
   t <- solType $ argTypeOf (DLA_Var ov)
-  let cm1 (vn, (ov', vu, body)) = do
+  let cm1 (vn, SwitchCase {..}) = do
         c <- solEq (ovp <> ".which") (solVariant t vn)
         set' <-
-          case vu of
-            True -> do
+          case sc_vl of
+            DLVarLet (Just _) ov' -> do
               addMemVar ov'
               return $ [solSet (solMemVar ov') (ovp <> "._" <> pretty vn)]
-            False -> return $ []
-        body' <- solS body
+            _ -> return $ []
+        body' <- solS sc_k
         let set_and_body' = set' <> body'
         return (c, set_and_body')
   solIfs_ <$> (mapM cm1 $ M.toAscList csm)
@@ -1082,6 +1083,9 @@ instance SolStmts DLStmt where
     DL_Let _ (DLV_Let _ dv) (DLE_PrimOp _ GET_COMPANION []) -> do
       addMemVar dv
       solLargeArg False dv $ mdaToMaybeLA T_Contract Nothing
+    DL_Let _ (DLV_Let _ dv) (DLE_PrimOp _ (ALGO_BLOCK bf) _) -> do
+      addMemVar dv
+      solLargeArg False dv $ mdaToMaybeLA (abfType bf) Nothing
     DL_Let _ (DLV_Eff) (DLE_GetUntrackedFunds {}) ->
       return $ mempty
     DL_Let _ (DLV_Let _ dv) (DLE_GetUntrackedFunds at mtok tb) -> do
@@ -1230,40 +1234,52 @@ instance SolStmts DLStmt where
     DL_LocalIf _ _ ca t f -> solIf ca t f
     DL_LocalSwitch at ov csm -> solSwitch at ov csm
     DL_Only {} -> impossible $ "only in CT"
-    DL_ArrayMap _ ans xs as i (DLBlock _ _ f r) -> do
-      addMemVars $ [ans] <> as
+    DL_ArrayMap _ ans_lv xs as i (DLBlock _ _ f r) -> do
+      addMemVars $ map vl2v as
       let sz = arraysLength xs
-      ans' <- solF ans
       xs' <- mapM solF xs
-      as' <- mapM solF as
-      i' <- addVar' i
+      as' <- mapM solF $ map vl2v as
+      i' <- addVar' $ vl2v i
+      recv_ans <-
+        case ans_lv of
+          DLV_Let _ ans -> do
+            addMemVars [ans]
+            ans' <- solF ans
+            return $ \r' ->
+              [ (solArrayRef ans' i') <+> "=" <+> r' <> semi ]
+          _ ->
+            return $ const []
       f' <- solS f
       r' <- solF r
       return $
         [ "for" <+> parens ("uint256 " <> i' <> " = 0" <> semi <+> i' <> " <" <+> (pretty sz) <> semi <+> i' <> "++")
             <> solBraces
               (zipWith (\a x -> a <+> "=" <+> (solArrayRef x i') <> semi) as' xs'
-               <> f' <> [ (solArrayRef ans' i') <+> "=" <+> r' <> semi ])
+               <> f' <> recv_ans r')
         ]
-    DL_ArrayReduce _ ans xs z b as i (DLBlock _ _ f r) -> do
-      addMemVars $ [ans, b] <> as
+    DL_ArrayReduce _ ans_lv xs z b as i (DLBlock _ _ f r) -> do
+      addMemVars $ [vl2v b] <> (map vl2v as)
       let sz = arraysLength xs
-      ans' <- solF ans
       xs' <- mapM solF xs
       z' <- solF z
-      as' <- mapM solF as
-      b' <- solF b
-      i' <- addVar' i
+      as' <- mapM solF $ map vl2v as
+      b' <- solF $ vl2v b
+      i' <- addVar' $ vl2v i
       f' <- solS f
       r' <- solF r
-      return $
-        [ b' <+> "=" <+> z' <> semi
-        , "for" <+> parens ("uint256 " <> i' <> " = 0" <> semi <+> i' <> " <" <+> (pretty sz) <> semi <+> i' <> "++")
-            <> solBraces
-              (zipWith (\a x -> a <+> "=" <+> (solArrayRef x i') <> semi) as' xs'
-               <> f' <> [ b' <+> "=" <+> r' <> semi ])
-        , ans' <+> "=" <+> b' <> semi
-        ]
+      let start =
+            [ b' <+> "=" <+> z' <> semi
+            , "for" <+> parens ("uint256 " <> i' <> " = 0" <> semi <+> i' <> " <" <+> (pretty sz) <> semi <+> i' <> "++")
+                <> solBraces
+                  (zipWith (\a x -> a <+> "=" <+> (solArrayRef x i') <> semi) as' xs'
+                   <> f' <> [ b' <+> "=" <+> r' <> semi ])
+            ]
+      case ans_lv of
+        DLV_Eff -> return start
+        DLV_Let _ ans -> do
+          addMemVars [ans]
+          ans' <- solF ans
+          return $ start <> [ ans' <+> "=" <+> b' <> semi ]
     DL_MapReduce {} ->
       impossible $ "cannot inspect maps at runtime"
     DL_LocalDo _ _ t -> solS t
@@ -1513,14 +1529,20 @@ createMem defs = do
 instance SolStmts CLStmt where
   solS = \case
     CLDL m -> solS m
-    CLTxnBind _ from timev secsv -> do
-      extendVarMap $ M.fromList
-        [ (timev, solBlockTime)
-        , (secsv, solBlockSecs)
-        , (from, "payable(msg.sender)")
-        ]
-      return []
-    CLEmitPublish _at which msg_ty -> do
+    CLBindSpecial _ lv sp ->
+      case lv of
+        DLV_Eff -> return []
+        DLV_Let _ v -> do
+          let rhs =
+                case sp of
+                  CLS_TxnFrom -> "payable(msg.sender)"
+                  CLS_TxnTime -> solBlockTime
+                  CLS_TxnSecs -> solBlockSecs
+                  CLS_StorageState -> "current_step"
+          extendVarMap $ M.singleton v rhs
+          return []
+    CLEmitPublish _at which vars -> do
+      let msg_ty = T_Tuple $ map varType vars
       -- XXX This should be in CLike, but how can we force the inclusion of
       -- _who?
       msg_ty' <- solType msg_ty
@@ -1537,10 +1559,6 @@ instance SolStmts CLStmt where
       teq <- solEq actual' given'
       solRequireS ("time check at " <> show at) $
         solBinOp "||" (parens zeq) (parens teq)
-    CLStateRead _ v -> do
-      extendVarMap $ M.fromList
-        [ (v, "current_step") ]
-      return []
     CLStateBind at isSafe svs_vl prev -> do
       s' <-
         case isSafe of
@@ -1569,9 +1587,9 @@ instance SolStmts CLStmt where
     CLStateSet _at which svs -> do
       let asnv = "nsvs"
       let vs = svs
-      let go (v, a) = solSet (asnv <> "." <> solRawVar v) <$> solF a
+      let go (SvsPut v a) = solSet (asnv <> "." <> solRawVar v) <$> solF a
       vs' <- mapM go vs
-      vs_ty' <- solAsnType $ map fst vs
+      vs_ty' <- solAsnType $ map svsp_svs vs
       return $
         [solDecl asnv (mayMemSol vs_ty') <> semi]
         <> vs'
@@ -1583,30 +1601,15 @@ instance SolStmts CLStmt where
       -- We could "selfdestruct" our token holdings but this is not a norm on
       -- ETH, so we won't spend the gas to do so
       return []
-    CLStateDestroy _at -> do
-      return $
-        [ solSet "current_step" "0x0"
-        , solSet "current_time" "0x0"
-        , "delete current_svbs;"
-        --
-        -- , solApply "selfdestruct" ["payable(msg.sender)"] <> semi
-        --
-        -- We don't do this, because selfdestruct-ing is dangerous, because
-        -- although the contract is gone, that means the messages sent to it
-        -- are like no-ops, so they can take funds from clients that think they
-        -- are calling real contracts. Ideally, we'd be able to get back our
-        -- funds (e.g. on Conflux where there are storage costs), we would
-        -- rather not get those, than have users lose funds to dead contracts.
-        ]
     CLMemorySet _at v a -> do
       let v' = memVarF $ bunpack v
       a' <- solF a
       return $ [ solSet v' a' ]
 
-vsToInternalArg :: [DLVar] -> DLType
-vsToInternalArg = T_Tuple . map varType
-makeInternalArg :: [DLVar] -> Doc -> [DLArg] -> App Docs
-makeInternalArg _ ia args = solLargeArg' False ia $ DLLA_Tuple args
+vsToInternalArg :: [DLArg] -> DLType
+vsToInternalArg = T_Tuple . map typeOf
+makeInternalArg :: Doc -> [DLArg] -> App Docs
+makeInternalArg ia args = solLargeArg' False ia $ DLLA_Tuple args
 bindInternalArg :: [DLVar] -> Doc -> App ()
 bindInternalArg vs ia = extendVarMap $ M.fromList $ zipWith go vs ([0 ..] :: [Int])
   where
@@ -1617,7 +1620,7 @@ instance SolStmts CLTail where
     CL_Com m k -> solScat m k
     CL_If _ ca t f -> solIf ca t f
     CL_Switch at ov csm -> solSwitch at ov csm
-    CL_Jump _at f args_ mmret -> do
+    CL_Jump _at f args_ _isApi mmret -> do
       let f' = pclv f
       call <- case args_ of
         [ arg ] -> do
@@ -1629,7 +1632,7 @@ instance SolStmts CLTail where
           args_ty' <- solType args_ty
           am' <- withArgLoc args_ty
           let defn = [ solDecl (am' <+> "_ja") args_ty' <> semi ]
-          asn <- makeInternalArg args "_ja" $ map DLA_Var args
+          asn <- makeInternalArg "_ja" args
           return $ defn <> asn <> [ solApply f' [ "_ja", memVar ] <> semi ]
       case mmret of
         Nothing -> do
@@ -1646,66 +1649,100 @@ instance SolStmts CLTail where
                   Just retv ->
                     [ "return" <+> memVarF (bunpack retv) <> semi ]
           return $ alloc <> call <> ret
-    CL_Halt _ -> return []
+    CL_Halt _ hm ->
+      case hm of
+        HM_Forever -> do
+          return $
+            [ solSet "current_step" "0x0"
+            , solSet "current_time" "0x0"
+            , "delete current_svbs;"
+            --
+            -- , solApply "selfdestruct" ["payable(msg.sender)"] <> semi
+            --
+            -- We don't do this, because selfdestruct-ing is dangerous, because
+            -- although the contract is gone, that means the messages sent to it
+            -- are like no-ops, so they can take funds from clients that think they
+            -- are calling real contracts. Ideally, we'd be able to get back our
+            -- funds (e.g. on Conflux where there are storage costs), we would
+            -- rather not get those, than have users lose funds to dead contracts.
+            ]
+        _ -> return []
 
-newtype FunX = FunX (CLSym, CLFun)
+data FunX = FunX
+  { fx_sfl :: SolFunctionLike
+  , fx_args :: [Doc]
+  , fx_extra :: Docs
+  , fx_tail :: CLTail
+  }
+newtype IntX = IntX (CLVar, CLIntFun)
+newtype ExtX = ExtX (CLSym, CLExtFun)
 
 instance SolStmts FunX where
-  solS (FunX ((CLSym name _ _), (CLFun {..}))) = freshVarMap $ do
-    (am, sfl, extra) <-
-      case name == nameMeth 0 of
-        True -> do
+  solS (FunX {..}) = freshVarMap $ do
+    (frameDefn, body) <- solSF fx_tail
+    return $ frameDefn <> solFunctionLike fx_sfl fx_args (fx_extra <> body)
+
+instance SolStmts IntX where
+  solS (IntX (name, CLIntFun {..})) = do
+    let CLFun {..} = cif_fun
+    let fx_tail = clf_tail
+    let name' = pclv name
+    let mut = not clf_view
+    let fx_sfl = SFLFun False mut name' Nothing
+    let fx_extra = mempty
+    let vs_ = map varLetVar clf_dom
+    argTy <- case vs_ of
+      [ v ] -> do
+        addVar v "_a"
+        return $ varType v
+      vs -> do
+        bindInternalArg vs "_a"
+        return $ vsToInternalArg $ map DLA_Var vs
+    argTyl <- solType_withArgLoc argTy
+    let fx_args = [ solDecl "_a" argTyl, memVarDecl ]
+    solS $ FunX {..}
+
+instance SolStmts ExtX where
+  solS (ExtX ((CLSym name _ _), CLExtFun {..})) = do
+    let CLFun {..} = cef_fun
+    let fx_tail = clf_tail
+    let name' = pclv name
+    let mut = not clf_view
+    mret <- Just <$> solType_withArgLoc cef_rng
+    (am, fx_sfl, fx_extra) <-
+      case cef_kind of
+        CE_Publish 0 -> do
           let extra =
                 [ "current_step = 0x0;"
                 , "creation_time = uint256(block.number);"
                 ]
           return (AM_Memory, SFLCtor, extra)
-        False -> do
-          let name' = pclv name
-          let mut = not clf_view
-          let extra = mempty
-          (ext, mret) <-
-            case clf_mode of
-              CLFM_Internal -> return (False, Nothing)
-              CLFM_External {..} -> do
-                ret <- solType_withArgLoc cfm_erngv
-                return (True, Just ret)
-          return $ (AM_Call, SFLFun ext mut name' mret, extra)
+        _ -> do
+          return (AM_Call, SFLFun True mut name' mret, mempty)
     am' <- solF am
-    args <-
-      case clf_mode of
-        CLFM_External {} -> do
-          let howMany = length clf_dom
-          when (howMany > apiMaxArgs) $
-            expect_throw Nothing clf_at $ Err_SolTooManyArgs "externally visible functions" (bunpack name) howMany
-          addVars solRawVar clf_dom
-          forM clf_dom $ \vl -> do
-            let v = varLetVar vl
-            let ty = varType v
-            ty' <- solType ty
-            let v' = solRawVar v
-            let am'' = if mustBeMem ty then am' else ""
-            return $ solDecl v' $ ty' <> am''
-        CLFM_Internal -> do
-          let vs_ = map varLetVar clf_dom
-          argTy <- case vs_ of
-            [ v ] -> do
-              addVar v "_a"
-              return $ varType v
-            vs -> do
-              bindInternalArg vs "_a"
-              return $ vsToInternalArg vs
-          argTyl <- solType_withArgLoc argTy
-          return $ [ solDecl "_a" argTyl, memVarDecl ]
-    (frameDefn, body) <- solSF clf_tail
-    return $ frameDefn <> solFunctionLike sfl args (extra <> body)
+    let howMany = length clf_dom
+    when (howMany > apiMaxArgs) $
+      expect_throw Nothing clf_at $ Err_SolTooManyArgs "externally visible functions" (bunpack name) howMany
+    addVars solRawVar clf_dom
+    fx_args <- forM clf_dom $ \vl -> do
+      let v = varLetVar vl
+      let ty = varType v
+      ty' <- solType ty
+      let v' = solRawVar v
+      let am'' = if mustBeMem ty then am' else ""
+      return $ solDecl v' $ ty' <> am''
+    solS $ FunX {..}
 
 instance SolStmts CLProg where
   solS (CLProg {..}) = do
     defs <- solSM DefX clp_defs
     mem <- createMem clp_defs
-    funs <- solSM FunX clp_funs
-    return $ defs <> mem <> funs
+    funs <- solSM IntX clp_funs
+    apis <- solSM ExtX clp_api
+    return $ defs <> mem <> funs <> apis
+
+instance (SolStmts a) => SolStmts (IGd a) where
+  solS (IGd x _) = solS x
 
 solProg :: (HasCounter a, SolStmts a) => a -> IO (ConnectorObject, Doc)
 solProg p = do
@@ -1883,23 +1920,17 @@ conCons' = \case
   DLC_UInt_max  -> DLL_Int sb UI_Word $ 2 ^ (256 :: Integer) - 1
   DLC_Token_zero -> DLL_TokenZero
 
-connect_eth :: CompilerToolEnv -> Connector
-connect_eth _ = Connector {..}
+connect_eth :: Connector
+connect_eth = Connector {..}
   where
     conName = conName'
     conCons = conCons'
     conReserved = flip S.member solReservedNames
-    conGen moutn cl = case moutn of
-      Just outn -> go (outn "sol")
-      Nothing -> withSystemTempDirectory "reachc-sol" $ \dir ->
-        go (dir </> "compiled.sol")
-      where
-        go :: FilePath -> IO ConnectorInfo
-        go solf = do
-          (cinfo, sol) <- solProg cl
-          unless dontWriteSol $ do
-            LTIO.writeFile solf $ render sol
-          compile_sol cinfo solf
+    conGen (ConGenConfig {..}) cl = do
+      (cinfo, sol) <- solProg cl
+      let o@(_, solf) = cgOutput (not dontWriteSol) "sol"
+      mayOutput o $ flip LTIO.writeFile (render sol)
+      compile_sol cinfo solf
     conCompileCode v = runExceptT $ do
       (c::String) <- ccPath =<< aesonParse' v
       return $ toJSON c

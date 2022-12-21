@@ -12,15 +12,15 @@ import Reach.Texty
 
 data DKCommon
   = DKC_Let SrcLoc DLLetVar DLExpr
-  | DKC_ArrayMap SrcLoc DLVar [DLArg] [DLVar] DLVar DKBlock
-  | DKC_ArrayReduce SrcLoc DLVar [DLArg] DLArg DLVar [DLVar] DLVar DKBlock
+  | DKC_ArrayMap SrcLoc DLLetVar [DLArg] [DLVarLet] DLVarLet DKBlock
+  | DKC_ArrayReduce SrcLoc DLLetVar [DLArg] DLArg DLVarLet [DLVarLet] DLVarLet DKBlock
   | DKC_Var SrcLoc DLVar
   | DKC_Set SrcLoc DLVar DLArg
   | DKC_LocalDo SrcLoc (Maybe DLVar) DKTail
   | DKC_LocalIf SrcLoc (Maybe DLVar) DLArg DKTail DKTail
   | DKC_LocalSwitch SrcLoc DLVar (SwitchCases DKTail)
   | DKC_Only SrcLoc SLPart DKTail
-  | DKC_MapReduce SrcLoc Int DLVar DLMVar DLArg DLVar DLVar DKBlock
+  | DKC_MapReduce SrcLoc Int DLLetVar DLMVar DLArg DLVarLet DLVarLet DLVarLet DKBlock
   | DKC_FluidSet SrcLoc FluidVar DLArg
   | DKC_FluidRef SrcLoc DLVar FluidVar
   | DKC_setApiDetails SrcLoc SLPart [DLType] (Maybe String)
@@ -37,8 +37,8 @@ instance Pretty DKCommon where
     DKC_Set _at dv da -> pretty dv <+> "=" <+> pretty da <> semi
     DKC_LocalDo _at ans k -> "do" <> parens (pretty ans) <+> render_nest (pretty k) <> semi
     DKC_LocalIf _at ans ca t f -> "local" <> parens (pretty ans) <+> prettyIfp ca t f
-    DKC_LocalSwitch _at ov csm -> prettySwitch (pretty ov <+> "{ local}") csm
-    DKC_MapReduce _ _mri ans x z b a f -> prettyReduce ans x z b a () f
+    DKC_LocalSwitch _at ov csm -> pretty $ SwitchCasesUse ov csm
+    DKC_MapReduce _ _mri ans x z b k a f -> prettyReduce ans x z b a k f
     DKC_FluidSet at fv a -> pretty (DLS_FluidSet at fv a)
     DKC_FluidRef at dv fv -> pretty (DLS_FluidRef at dv fv)
     DKC_Only _at who t -> prettyOnly who t
@@ -79,7 +79,7 @@ instance Pretty DKTail where
     DK_ToConsensus {..} ->
       prettyToConsensus__ ("?" :: String) dk_tc_send dk_tc_recv dk_tc_mtime
     DK_If _at _ ca t f -> prettyIfp ca t f
-    DK_Switch _at ov csm -> prettySwitch ov csm
+    DK_Switch _at ov csm -> pretty $ SwitchCasesUse ov csm
     DK_FromConsensus _at _ret_at _fs k ->
       prettyCommit <> hardline <> pretty k
     DK_While _at asn inv cond body k ->

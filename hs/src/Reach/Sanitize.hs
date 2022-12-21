@@ -78,9 +78,8 @@ instance Sanitize DLRemoteALGOSTR where
     RA_Tuple t -> RA_Tuple $ sani t
 
 instance Sanitize DLRemoteALGO where
-  sani (DLRemoteALGO a b c d e f g h i j k) =
-    DLRemoteALGO (sani a) (sani b) (sani c) (sani d) (sani e) (sani f) (sani g) (sani h) (sani i)
-                 (sani j) (sani k)
+  sani (DLRemoteALGO {..}) =
+    DLRemoteALGO ( sani ra_fees )( sani ra_accounts )( sani ra_assets )( sani ra_addr2acc )( sani ra_apps )( sani ra_boxes )( sani ra_onCompletion )( sani ra_strictPay )( sani ra_rawCall )( sani ra_simNetRecv )( sani ra_simTokensRecv )( sani ra_simReturnVal )( sani ra_txnOrderForward )
 
 instance Sanitize AS.Value where
   sani = id
@@ -113,8 +112,8 @@ instance Sanitize DLExpr where
     DLE_CheckPay _ x y z -> DLE_CheckPay sb x (sani y) (sani z)
     DLE_Wait _ x -> DLE_Wait sb (sani x)
     DLE_PartSet _ p x -> DLE_PartSet sb p (sani x)
-    DLE_MapRef _ mv fa -> DLE_MapRef sb mv (sani fa)
-    DLE_MapSet _ mv fa na -> DLE_MapSet sb mv (sani fa) (sani na)
+    DLE_MapRef _ mv fa vt -> DLE_MapRef sb mv (sani fa) (sani vt)
+    DLE_MapSet _ mv fa vt na -> DLE_MapSet sb mv (sani fa) (sani vt) (sani na)
     DLE_Remote _ fs av rt dr -> DLE_Remote sb fs (sani av) rt (sani dr)
     DLE_TokenNew _ tns -> DLE_TokenNew sb (sani tns)
     DLE_TokenBurn _ tok amt -> DLE_TokenBurn sb (sani tok) (sani amt)
@@ -133,6 +132,15 @@ instance Sanitize DLExpr where
 instance Sanitize DLAssignment where
   sani (DLAssignment m) = DLAssignment $ sani m
 
+instance {-# OVERLAPS #-} Sanitize a => Sanitize (SwitchCases a) where
+  sani (SwitchCases m) = SwitchCases $ sani m
+
+instance {-# OVERLAPS #-} Sanitize a => Sanitize (SwitchCase a) where
+  sani (SwitchCase {..}) = SwitchCase (sani sc_vl) (sani sc_k)
+
+instance Sanitize DLVarLet where
+  sani (DLVarLet mvc v) = DLVarLet mvc (sani v)
+
 instance Sanitize DLStmt where
   sani = \case
     DL_Nop _ -> DL_Nop sb
@@ -146,8 +154,8 @@ instance Sanitize DLStmt where
     DL_LocalIf _ mans a b c -> DL_LocalIf sb (sani mans) (sani a) (sani b) (sani c)
     DL_LocalSwitch _ a b -> DL_LocalSwitch sb a (sani b)
     DL_Only _ a b -> DL_Only sb a (sani b)
-    DL_MapReduce _ mri a b c d e f ->
-      DL_MapReduce sb mri a b (sani c) d e (sani f)
+    DL_MapReduce _ mri a b c d k e f ->
+      DL_MapReduce sb mri a b (sani c) d k e (sani f)
     DL_LocalDo _ mans t -> DL_LocalDo sb (sani mans) (sani t)
 
 instance Sanitize DLTail where
@@ -194,6 +202,9 @@ instance Sanitize LLStep where
     LLS_Com m k -> LLS_Com (sani m) (sani k)
     LLS_Stop _ -> LLS_Stop sb
     LLS_ToConsensus _ lct send recv mtime -> LLS_ToConsensus sb (sani lct) (sani send) (sani recv) (sani mtime)
+
+instance Sanitize SvsPut where
+  sani (SvsPut {..}) = SvsPut (sani svsp_svs) (sani svsp_val)
 
 instance Sanitize FromInfo where
   sani = \case

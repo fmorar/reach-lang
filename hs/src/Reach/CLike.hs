@@ -2,13 +2,13 @@ module Reach.CLike
   ( clike
   , nameMap
   , nameReturn
-  , nameMeth
   ) where
 
 import Control.Monad.Reader
 import Data.IORef
 import qualified Data.Map.Strict as M
 import Data.Maybe
+import Reach.AddCounts
 import Reach.AST.Base
 import Reach.AST.DLBase
 import Reach.AST.CP
@@ -24,8 +24,13 @@ type App = ReaderT Env IO
 data Env = Env
   { eDefsR :: IORef CLDefs
   , eFunsR :: IORef CLFuns
+  , eAPIR :: IORef CLAPI
+  , eStateR :: IORef CLState
   , eCounter :: Counter
   }
+
+instance HasStateR Env where
+  getStateR = eStateR
 
 instance HasCounter Env where
   getCounter = eCounter
@@ -47,6 +52,21 @@ nameApi = nameBase "a"
 nameReturn :: CLVar -> CLVar
 nameReturn = nameBase "r"
 
+class HasStateR a where
+  getStateR :: a -> IORef CLState
+
+recordState :: (HasStateR e) => Int -> [DLVar] -> ReaderT e IO ()
+recordState which svs = do
+  sr <- asks getStateR
+  liftIO $ modifyIORef sr $ \m ->
+    case M.lookup which m of
+      Just svs' ->
+        case svs == svs' of
+          True -> m
+          False -> impossible $ "recordState: mismatch " <> show which <> " " <> show svs <> " vs " <> show svs'
+      Nothing ->
+        M.insert which svs m
+
 env_insert :: (Show k, Ord k) => k -> v -> M.Map k v -> M.Map k v
 env_insert k v m =
   case M.member k m of
@@ -61,28 +81,35 @@ env_insert_ f k v = do
 def :: CLVar -> CLDef -> App ()
 def v d = env_insert_ eDefsR v d
 
-fun :: CLVar -> CLFun -> App ()
-fun n d = env_insert_ eFunsR s d
+funi :: CLVar -> CLIntFun -> App ()
+funi n d = env_insert_ eFunsR n d
+
+fune :: CLVar -> CLExtFun -> App ()
+fune n d = env_insert_ eAPIR s d
   where
     s = CLSym n dom rng
-    dom = map varLetType clf_dom
-    rng = case clf_mode of
-            CLFM_Internal -> T_Null
-            CLFM_External t -> t
-    CLFun {..} = d
+    dom = map varLetType $ clf_dom cef_fun
+    rng = cef_rng
+    CLExtFun {..} = d
 
-funw :: CLVar -> [CLVar] -> SrcLoc -> [DLVarLet] -> Bool -> DLType -> Maybe CLVar -> CLTail -> App ()
-funw ni ns at clf_dom clf_view rng mret intt = do
+funw :: CLVar -> [CLVar] -> SrcLoc -> [DLVarLet] -> Bool -> DLType -> CLExtKind -> Maybe CLVar -> CLTail -> App ()
+funw ni ns at int_dom clf_view cef_rng cef_kind mret intt = do
   let clf_at = at
-  let di = CLFun { clf_mode = CLFM_Internal, clf_tail = intt, .. }
-  let domvs = map varLetVar clf_dom
-  let extt = CL_Jump at ni domvs (Just mret)
-  let de = CLFun { clf_mode = CLFM_External rng, clf_tail = extt, .. }
-  fun ni di
+  let cif_mwhich = case cef_kind of
+                     CE_Publish n -> Just n
+                     _ -> Nothing
+  let cif_fun = CLFun { clf_tail = intt, clf_dom = int_dom, ..}
+  let di = CLIntFun {..}
+  ext_dom_vs <- mapM freshenVar $ map varLetVar int_dom
+  let extt = CL_Jump at ni (map DLA_Var ext_dom_vs) False (Just mret)
+  let ext_dom = map (DLVarLet (Just DVC_Once)) ext_dom_vs
+  let cef_fun = CLFun { clf_tail = extt, clf_dom = ext_dom, ..}
+  let de = CLExtFun {..}
+  funi ni di
   -- XXX optimize when one ns?
   -- I can't in Solidity because of the argument number issue, but I can in AVM
   -- and EVM
-  forM_ ns $ flip fun de
+  forM_ ns $ flip fune de
 
 class CLike a where
   cl :: a -> App ()
@@ -116,22 +143,24 @@ instance CLike DLEvents where
   cl = cl . CILMap DLEI
 
 data CLViewY = CLViewY
-  { cvy_svs :: [DLVarLet]
+  { cvy_svs :: [DLVar]
   , cvy_body :: DLExportBlock
   }
 
 instance CLikeF CLViewY where
   clf (CLViewY {..}) = do
     prev <- fromMaybe (impossible "clf cvy") <$> asks f_staten
+    let svs_vls = map v2vl cvy_svs
     let (DLinExportBlock _ mfargs (DLBlock at _ t r)) = cvy_body
     rng <- asks f_rng
-    let k = CL_Com (CLMemorySet at rng r) $ CL_Halt at
+    let k = CL_Com (CLMemorySet at rng r) $ CL_Halt at HM_Pure
     let t0 = dtReplace (CL_Com . CLDL) k t
     let fargs = fromMaybe mempty mfargs
     dom <- asks f_dom
     let bind (dvl, avl) = CL_Com $ CLDL $ DL_Let at (vl2lv avl) $ DLE_Arg at $ DLA_Var $ varLetVar dvl
     let t1 = foldr bind t0 $ zip dom fargs
-    let t2 = CL_Com (CLStateBind at True cvy_svs prev) t1
+    recordState prev cvy_svs
+    let t2 = CL_Com (CLStateBind at True svs_vls prev) t1
     return $ t2
 
 type CLViewX = FunInfo CLViewY
@@ -141,12 +170,13 @@ type CLViewsX = M.Map SLPart CLViewX
 viewReorg :: DLViewsX -> CLViewsX
 viewReorg (DLViewsX vs vis) = vx
   where
-    igo (ViewInfo svs vsi) = (map v2vl svs, flattenInterfaceLikeMap vsi)
+    igo (ViewInfo svs vsi) = (svs, flattenInterfaceLikeMap vsi)
     vism = M.map igo vis
     vx = M.mapWithKey go $ flattenInterfaceLikeMap_ (,) vs
     go k (p, (DLView {..})) = FunInfo {..}
       where
         fi_noCheck = False
+        fi_isApi = False
         fi_at = dvw_at
         (fi_dom, fi_rng) = itype2arr dvw_it
         fi_as = map (p <>) dvw_as
@@ -162,6 +192,7 @@ type FApp = ReaderT FEnv IO
 
 data FEnv = FEnv
   { fCounter :: Counter
+  , fStateR :: IORef CLState
   , f_at :: SrcLoc
   , f_dom :: [DLVarLet]
   , f_rng :: CLVar
@@ -169,6 +200,9 @@ data FEnv = FEnv
   , f_staten :: Maybe Int
   , f_noCheck :: Bool
   }
+
+instance HasStateR FEnv where
+  getStateR = fStateR
 
 instance HasCounter FEnv where
   getCounter = fCounter
@@ -187,7 +221,7 @@ instance (CLikeF a) => CLikeF (BLT Int a) where
       let f = CL_Com (CLDL (DL_Let at DLV_Eff (DLE_Claim at [] CT_Enforce (DLA_Literal $ DLL_Bool False) (Just "Incorrect state: empty blt"))))
       return
         $ (if noCheck then id else f)
-        $ CL_Halt at
+        $ CL_Halt at HM_Pure
     Leaf i mc a -> do
       -- XXX ^ make sure blt actually fills in mc
       at <- asks f_at
@@ -216,6 +250,7 @@ data FunInfo a = FunInfo
   { fi_at :: SrcLoc
   , fi_dom :: [DLType]
   , fi_isView :: Bool
+  , fi_isApi :: Bool
   , fi_rng :: DLType
   , fi_as :: [SLPart]
   , fi_steps :: M.Map Int a
@@ -234,14 +269,16 @@ instance (CLikeF a) => CLike (FIX a) where
     let f_dom = domvls
     f_statev <- allocVar fi_at $ T_UInt UI_Word
     fCounter <- asks getCounter
+    fStateR <- asks getStateR
     let f_staten = Nothing
     let f_noCheck = fi_noCheck
     -- XXX when the state is a data, this would be a real switch
     -- XXX optimize case where there's one step?
     stept <- clf_ (FEnv {..}) $ bltM fi_steps
-    let intt = CL_Com (CLStateRead fi_at f_statev) stept
+    let intt = CL_Com (CLBindSpecial fi_at (v2lv f_statev) CLS_StorageState) stept
     let ns = v : fi_as
-    funw (nameApi v) ns fi_at domvls fi_isView rng (Just f_rng) intt
+    let k = (if fi_isApi then CE_API else CE_View) $ bunpack v
+    funw (nameApi v) ns fi_at domvls fi_isView rng k (Just f_rng) intt
 
 instance (CLikeF a) => CLike (M.Map SLPart (FunInfo a)) where
   cl = cl . CMap FIX
@@ -262,7 +299,7 @@ instance CLikeF ApiInfoY where
     return
       $ CL_Com (CLDL (DL_Let at (DLV_Let DVC_Once timev) $ DLE_Arg at $ DLA_Literal $ DLL_Int at UI_Word $ 0))
       $ flip (foldr go) lets
-      $ CL_Jump at (nameMethi aiy_which) [timev, argv] Nothing
+      $ CL_Jump at (nameMethi aiy_which) (map DLA_Var [timev, argv]) True Nothing
 
 type ApiInfoX = FunInfo ApiInfoY
 type ApiInfosX = M.Map SLPart ApiInfoX
@@ -274,6 +311,7 @@ apiReorgX :: M.Map Int ApiInfo -> ApiInfoX
 apiReorgX aim = FunInfo {..}
   where
     fi_noCheck = True
+    fi_isApi = True
     fi_at = get ai_at
     imp = impossible "apiSig"
     fi_dom = flip get' id fi_dom'
@@ -330,7 +368,11 @@ type TApp = ReaderT TEnv IO
 
 data TEnv = TEnv
   { tCounter :: Counter
+  , tStateR :: IORef CLState
   }
+
+instance HasStateR TEnv where
+  getStateR = tStateR
 
 instance HasCounter TEnv where
   getCounter = tCounter
@@ -342,7 +384,10 @@ tr_ :: (CLikeTr a b) => TEnv -> a -> App b
 tr_ e x = liftIO $ flip runReaderT e $ tr x
 
 instance (CLikeTr a b) => CLikeTr (SwitchCases a) (SwitchCases b) where
-  tr = mapM $ \(x, y, z) -> (,,) x y <$> tr z
+  tr (SwitchCases m) = SwitchCases <$> mapM tr m
+
+instance CLikeTr a b => CLikeTr (SwitchCase a) (SwitchCase b) where
+  tr (SwitchCase {..}) = SwitchCase sc_vl <$> tr sc_k
 
 instance CLikeTr CTail CLTail where
   tr = \case
@@ -355,27 +400,20 @@ instance CLikeTr CTail CLTail where
         FI_Continue svs -> do
           -- XXX change to StoreSet
           -- XXX expose saving of time
-          return $ CL_Com (CLStateSet at which svs) ht
+          recordState which $ map svsp_svs svs
+          return $ CL_Com (CLStateSet at which svs) (ht HM_Impure)
         FI_Halt toks -> do
-          -- XXX change to StoreSet
-          let ht' = CL_Com (CLStateDestroy at) ht
+          let ht' = ht HM_Forever
           -- XXX move this into language
           return $ foldr (CL_Com . CLTokenUntrack at) ht' toks
     CT_Jump at which svs (DLAssignment asnm) -> do
-      let asnl = M.toAscList asnm
-      asn' <- forM asnl $ \(v, a) -> do
-        v' <- freshenVar v
-        return (v', a)
-      let asnvs' = map fst asn'
-      let args = svs <> asnvs'
+      let asn_as = map snd $ M.toAscList asnm
+      let args = map DLA_Var svs <> asn_as
       -- XXX move this concept backwards so that CT_Jump is just a sequence of
       -- variables
       -- XXX make it so that all CLike Internal calls pass things through
       -- memory
-      let kt = CL_Jump at (nameLoop which) args Nothing
-      let go (v', a) = CL_Com (CLDL (DL_Let at (DLV_Let DVC_Once v') (DLE_Arg at a)))
-      let t = foldr go kt asn'
-      return t
+      return $ CL_Jump at (nameLoop which) args False Nothing
 
 newtype CHX = CHX (Int, CHandler)
 
@@ -383,54 +421,64 @@ instance CLike CHX where
   cl (CHX (which, (C_Handler {..}))) = do
     given_timev <- allocVar ch_at $ T_UInt UI_Word
     let eff_dom = (v2vl given_timev) : ch_msg
-    let eff_ty = T_Tuple $ map varType $ map varLetVar eff_dom
+    let msg_vars = map varLetVar eff_dom
+    let eff_ty = T_Tuple $ map varType msg_vars
     act_var <- allocVar ch_at eff_ty
     let clf_dom = [ v2vl act_var ]
     let act_arg = DLA_Var act_var
     tCounter <- asks getCounter
-    let addArg (vl, i) = CL_Com $ CLDL $ DL_Let ch_at (vl2lv vl) (DLE_TupleRef ch_at act_arg i)
-    let addArgs = flip (foldr addArg) $ zip eff_dom [0..]
+    tStateR <- asks eStateR
+    let addArg (v, i) = CL_Com $ CLDL $ DL_Let ch_at (v2lv v) (DLE_TupleRef ch_at act_arg i)
+    let addArgs = flip (foldr addArg) $ zip msg_vars [0..]
     body' <- tr_ (TEnv {..}) ch_body
     let isCtor = which == 0
+    recordState ch_last $ map varLetVar ch_svs
     let mStateBind =
           -- XXX change to StoreRead and something to decompose a Data instance
           -- and fail if the tag doesn't match
           if isCtor then id else CL_Com (CLStateBind ch_at False ch_svs ch_last)
     let intt =
-          -- XXX include this in the program itself?
-            CL_Com (CLEmitPublish ch_at which eff_ty)
           -- XXX add extensions to DLE so these can be read directly
-          $ CL_Com (CLTxnBind ch_at ch_from ch_timev ch_secsv)
+            CL_Com (CLBindSpecial ch_at (v2lv ch_from) CLS_TxnFrom)
+          $ CL_Com (CLBindSpecial ch_at (v2lv ch_timev) CLS_TxnTime)
+          $ CL_Com (CLBindSpecial ch_at (v2lv ch_secsv) CLS_TxnSecs)
           $ mStateBind
           $ addArgs
-          -- XXX puit given_timev into DL and does this in Core
+          -- XXX include this in the program itself?
+          $ CL_Com (CLEmitPublish ch_at which msg_vars)
+          -- XXX put given_timev into DL and does this in Core
           -- XXX there is implicitly a reference to "current_time"
           $ CL_Com (CLTimeCheck ch_at given_timev)
           -- XXX move this back to EPP
           $ CL_Com (CLIntervalCheck ch_at ch_timev ch_secsv ch_int)
           $ body'
     let isView = False
-    funw (nameMethi which) [ nameMeth which ] ch_at clf_dom isView T_Null Nothing intt
+    funw (nameMethi which) [ nameMeth which ] ch_at clf_dom isView T_Null (CE_Publish which) Nothing intt
   cl (CHX (which, (C_Loop {..}))) = do
     let n = nameLoop which
     let clf_dom = cl_svs <> cl_vars
     tCounter <- asks getCounter
+    tStateR <- asks eStateR
     clf_tail <- tr_ (TEnv {..}) cl_body
-    let clf_mode = CLFM_Internal
     let clf_view = False
+    let cif_mwhich = Nothing
     let clf_at = cl_at
-    fun n $ CLFun {..}
+    let cif_fun = CLFun {..}
+    funi n $ CLIntFun {..}
 
 instance CLike CHandlers where
   cl (CHandlers hm) = cl $ CMap CHX hm
 
 clike :: PLProg a CPProg -> IO (PLProg a CLProg)
-clike = plp_cpp_mod $ \old@(CPProg {..}) -> do
-  let CPOpts {..} = cpp_opts
+clike = plp_cpp_mod $ \CPProg {..} -> do
   let clp_at = cpp_at
-  let clp_opts = CLOpts cpo_untrustworthyMaps cpo_counter
+  let clo_counter = getCounter cpp_opts
+  let clo_aem = getALGOExitMode cpp_opts
+  let clp_opts = CLOpts {..}
   eDefsR <- newIORef mempty
   eFunsR <- newIORef mempty
+  eAPIR <- newIORef mempty
+  eStateR <- newIORef mempty
   let eCounter = getCounter clp_opts
   flip runReaderT (Env {..}) $ do
     -- XXX creation time
@@ -442,5 +490,8 @@ clike = plp_cpp_mod $ \old@(CPProg {..}) -> do
     cl cpp_handlers
   clp_defs <- readIORef eDefsR
   clp_funs <- readIORef eFunsR
-  let clp_old = old
-  return $ CLProg {..}
+  clp_api <- readIORef eAPIR
+  clp_state <- readIORef eStateR
+  -- We created new references to some variables, so we need to correct the
+  -- counts
+  add_counts $ CLProg {..}

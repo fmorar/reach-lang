@@ -69,6 +69,12 @@ instance FromJSON DLType
 
 instance ToJSON DLType
 
+class TypeOf a where
+  typeOf :: a -> DLType
+
+instance TypeOf DLType where
+  typeOf = id
+
 uintTyOf :: DLType -> UIntTy
 uintTyOf = \case
   T_UInt t -> t
@@ -116,7 +122,7 @@ bytesTypeLen = \case
   T_Bytes l -> l
   _ -> impossible "no bytes"
 
-objstrTypes :: DLType -> [(SLVar, DLType)]
+objstrTypes :: HasCallStack => DLType -> [(SLVar, DLType)]
 objstrTypes = \case
   T_Object m -> M.toAscList m
   T_Struct ts -> ts
@@ -235,9 +241,12 @@ instance Pretty DLConstant where
     DLC_Token_zero -> "Token.zero"
 
 conTypeOf :: DLConstant -> DLType
-conTypeOf = \case
-  DLC_UInt_max  -> T_UInt UI_Word
-  DLC_Token_zero -> T_Token
+conTypeOf = typeOf
+
+instance TypeOf DLConstant where
+  typeOf = \case
+    DLC_UInt_max  -> T_UInt UI_Word
+    DLC_Token_zero -> T_Token
 
 data DLLiteral
   = DLL_Null
@@ -258,11 +267,14 @@ instance Pretty DLLiteral where
     DLL_TokenZero -> "Token.zero"
 
 litTypeOf :: DLLiteral -> DLType
-litTypeOf = \case
-  DLL_Null -> T_Null
-  DLL_Bool _ -> T_Bool
-  DLL_Int _ t _ -> T_UInt t
-  DLL_TokenZero -> T_Token
+litTypeOf = typeOf
+
+instance TypeOf DLLiteral where
+  typeOf = \case
+    DLL_Null -> T_Null
+    DLL_Bool _ -> T_Bool
+    DLL_Int _ t _ -> T_UInt t
+    DLL_TokenZero -> T_Token
 
 data DLVar = DLVar SrcLoc (Maybe (SrcLoc, SLVar)) DLType Int
   deriving (Generic)
@@ -311,7 +323,10 @@ dvdeletep :: DLVar -> [(DLVar, a)] -> [(DLVar, a)]
 dvdeletep x = filter ((x /=) . fst)
 
 varType :: DLVar -> DLType
-varType (DLVar _ _ t _) = t
+varType = typeOf
+
+instance TypeOf DLVar where
+  typeOf (DLVar _ _ t _) = t
 
 newtype DLMVar = DLMVar Int
   deriving (Show, Eq, Ord, Generic)
@@ -383,11 +398,14 @@ instance CanDupe DLArg where
     DLA_Interact {} -> False
 
 argTypeOf :: DLArg -> DLType
-argTypeOf = \case
-  DLA_Var (DLVar _ _ t _) -> t
-  DLA_Constant c -> conTypeOf c
-  DLA_Literal c -> litTypeOf c
-  DLA_Interact _ _ t -> t
+argTypeOf = typeOf
+
+instance TypeOf DLArg where
+  typeOf = \case
+    DLA_Var v -> typeOf v
+    DLA_Constant c -> typeOf c
+    DLA_Literal c -> typeOf c
+    DLA_Interact _ _ t -> t
 
 argArrTypeLen :: DLArg -> (DLType, Integer)
 argArrTypeLen = arrTypeLen . argTypeOf
@@ -663,6 +681,21 @@ data PrimVM -- Primitive Verification Mode
   | PV_None
   deriving (Eq, Generic, Ord, Show)
 
+data ALGOBlockField
+  = ABF_Seed
+  | ABF_Timestamp
+  deriving (Eq, Ord, Show)
+
+instance Pretty ALGOBlockField where
+  pretty = \case
+    ABF_Seed -> "Seed"
+    ABF_Timestamp -> "Secs"
+
+abfType :: ALGOBlockField -> DLType
+abfType = \case
+  ABF_Seed -> T_Bytes 32
+  ABF_Timestamp -> T_UInt UI_Word
+
 data PrimOp
   = ADD UIntTy PrimVM
   | SUB UIntTy PrimVM
@@ -697,6 +730,7 @@ data PrimOp
   | GET_CONTRACT
   | GET_ADDRESS
   | GET_COMPANION
+  | ALGO_BLOCK ALGOBlockField
   deriving (Eq, Generic, Ord, Show)
 
 instance Pretty PrimVM where
@@ -737,9 +771,10 @@ instance Pretty PrimOp where
     STRINGDYN_CONCAT -> "StringDyn.concat"
     UINT_TO_STRINGDYN t -> "UInt" <> uitp t <> ".toStringDyn"
     CTC_ADDR_EQ -> "Contract.addressEq"
-    GET_CONTRACT -> "getContract()"
-    GET_ADDRESS -> "getAddress()"
-    GET_COMPANION -> "getCompanion()"
+    GET_CONTRACT -> "getContract"
+    GET_ADDRESS -> "getAddress"
+    GET_COMPANION -> "getCompanion"
+    ALGO_BLOCK bf -> "ALGO.block" <> pretty bf
     where
       uitp = \case
         UI_256 -> "b"
@@ -761,39 +796,57 @@ data DLRemoteALGOSTR -- simTokensRecv in `remote().ALGO({ simTokensRecv: [1, 2, 
   deriving (Eq, Ord, Show)
 
 data DLRemoteALGO = DLRemoteALGO
-  { ralgo_fees :: DLArg
-  , ralgo_accounts :: [DLArg]
-  , ralgo_assets :: [DLArg]
-  , ralgo_addr2acc :: Bool
-  , ralgo_apps :: [DLArg]
-  , ralgo_onCompletion :: DLRemoteALGOOC
-  , ralgo_strictPay :: Bool
-  , ralgo_rawCall :: Bool
-  , ralgo_simNetRecv :: DLArg
-  , ralgo_simTokensRecv :: DLRemoteALGOSTR
-  , ralgo_simReturnVal :: Maybe DLArg
+  { ra_fees :: DLArg
+  , ra_accounts :: [DLArg]
+  , ra_assets :: [DLArg]
+  , ra_addr2acc :: Bool
+  , ra_apps :: [DLArg]
+  , ra_boxes :: [DLArg]
+  , ra_onCompletion :: DLRemoteALGOOC
+  , ra_strictPay :: Bool
+  , ra_rawCall :: Bool
+  , ra_simNetRecv :: DLArg
+  , ra_simTokensRecv :: DLRemoteALGOSTR
+  , ra_simReturnVal :: Maybe DLArg
+  , ra_txnOrderForward :: Bool
   }
   deriving (Eq, Ord)
 
 zDLRemoteALGO :: DLRemoteALGO
-zDLRemoteALGO = DLRemoteALGO argLitZero mempty mempty False mempty RA_NoOp False False argLitZero RA_Unset Nothing
+zDLRemoteALGO = DLRemoteALGO {..}
+  where
+    ra_fees = argLitZero
+    ra_accounts = mempty
+    ra_assets = mempty
+    ra_addr2acc = False
+    ra_apps = mempty
+    ra_boxes = mempty
+    ra_onCompletion = RA_NoOp
+    ra_strictPay = False
+    ra_rawCall = False
+    ra_simNetRecv = argLitZero
+    ra_simTokensRecv = RA_Unset
+    ra_simReturnVal = Nothing
+    ra_txnOrderForward = False
 
 instance PrettySubst DLRemoteALGO where
   prettySubst (DLRemoteALGO {..}) = do
-    f' <- prettySubst ralgo_fees
-    a' <- mapM prettySubst ralgo_assets
-    p' <- mapM prettySubst ralgo_apps
-    let a2a' = pretty ralgo_addr2acc
-    let sp = pretty ralgo_strictPay
+    f' <- prettySubst ra_fees
+    a' <- mapM prettySubst ra_assets
+    p' <- mapM prettySubst ra_apps
+    b' <- mapM prettySubst ra_boxes
+    let a2a' = pretty ra_addr2acc
+    let sp = pretty ra_strictPay
     return $
       render_obj $
         M.fromList
           [ ("fees" :: String, f')
           , ("assets", render_das a')
           , ("addr2acc", pretty a2a')
+          , ("boxes", render_das b')
           , ("apps", render_das p')
           , ("strictPay", pretty sp)
-          , ("rawCall", pretty ralgo_rawCall)
+          , ("rawCall", pretty ra_rawCall)
           ]
 
 data DLContractNew = DLContractNew
@@ -850,8 +903,8 @@ data DLExpr
   | DLE_CheckPay SrcLoc [SLCtxtFrame] DLArg (Maybe DLArg)
   | DLE_Wait SrcLoc DLTimeArg
   | DLE_PartSet SrcLoc SLPart DLArg
-  | DLE_MapRef SrcLoc DLMVar DLArg
-  | DLE_MapSet SrcLoc DLMVar DLArg (Maybe DLArg)
+  | DLE_MapRef SrcLoc DLMVar DLArg DLType
+  | DLE_MapSet SrcLoc DLMVar DLArg DLType (Maybe DLArg)
   | DLE_Remote SrcLoc [SLCtxtFrame] DLArg DLType DLRemote
   | DLE_TokenNew SrcLoc DLTokenNew
   | DLE_TokenBurn SrcLoc DLArg DLArg
@@ -985,14 +1038,14 @@ instance PrettySubst DLExpr where
     DLE_PartSet _ who a -> do
       a' <- prettySubst a
       return $ render_sp who <> ".set" <> parens a'
-    DLE_MapRef _ mv i -> do
+    DLE_MapRef _ mv i _ -> do
       i' <- prettySubst i
       return $ pretty mv <> brackets i'
-    DLE_MapSet _ mv kv (Just nv) -> do
+    DLE_MapSet _ mv kv _ (Just nv) -> do
       kv' <- prettySubst kv
       nv' <- prettySubst nv
       return $ pretty mv <> "[" <> kv' <> "]" <+> "=" <+> nv'
-    DLE_MapSet _ mv i Nothing -> do
+    DLE_MapSet _ mv i _ Nothing -> do
       i' <- prettySubst i
       return $ "delete" <+> pretty mv <> brackets i'
     DLE_Remote _ _ av _ dr -> do
@@ -1227,6 +1280,9 @@ instance Pretty DLLetVar where
     DLV_Eff -> "eff"
     DLV_Let lc x -> pretty x <> pretty lc
 
+v2lv :: DLVar -> DLLetVar
+v2lv = DLV_Let DVC_Many
+
 lv2mdv :: DLLetVar -> Maybe DLVar
 lv2mdv = \case
   DLV_Eff -> Nothing
@@ -1242,12 +1298,22 @@ instance Pretty DLVarLet where
                Nothing -> "#"
                Just vc -> pretty vc
 
+instance TypeOf DLVarLet where
+  typeOf = typeOf . varLetVar
+
 varLetVar :: DLVarLet -> DLVar
 varLetVar (DLVarLet _ v) = v
 varLetType :: DLVarLet -> DLType
-varLetType = varType . varLetVar
+varLetType = typeOf
 v2vl :: DLVar -> DLVarLet
 v2vl = DLVarLet (Just DVC_Many)
+vl2v :: DLVarLet -> DLVar
+vl2v (DLVarLet _ v) = v
+vl2mdv :: DLVarLet -> Maybe DLVar
+vl2mdv (DLVarLet mvc v) =
+  case mvc of
+    Nothing -> Nothing
+    Just _ -> Just v
 
 vl2lv :: DLVarLet -> DLLetVar
 vl2lv (DLVarLet mvc v) =
@@ -1255,10 +1321,41 @@ vl2lv (DLVarLet mvc v) =
     Nothing -> DLV_Eff
     Just vc -> DLV_Let vc v
 
-type SwitchCases a = M.Map SLVar (DLVar, Bool, a)
+data SwitchCase a = SwitchCase
+  { sc_vl :: DLVarLet
+  , sc_k :: a
+  }
+  deriving (Eq)
+
+data SwitchCaseUse a = SwitchCaseUse DLVar SLVar (SwitchCase a)
+
+unSwitchCaseUse :: SwitchCaseUse a -> (SLVar, SwitchCase a)
+unSwitchCaseUse (SwitchCaseUse _ vn sc) = (vn, sc)
+
+instance Pretty a => Pretty (SwitchCaseUse a) where
+  pretty (SwitchCaseUse ov vn (SwitchCase {..})) =
+    "case" <+> pretty vn <+> "as" <+> pretty sc_vl <+> "from" <+> pretty ov <> ":" <+> render_nest (pretty sc_k)
+
+switchUses :: DLVar -> SwitchCases a -> [SwitchCaseUse a]
+switchUses v (SwitchCases csm) =
+  map (uncurry $ SwitchCaseUse v) $ M.toAscList csm
+
+unSwitchUses :: [SwitchCaseUse a] -> SwitchCases a
+unSwitchUses l = SwitchCases $ M.fromList $ map unSwitchCaseUse l
+
+type SwitchCasesM a = M.Map SLVar (SwitchCase a)
+
+newtype SwitchCases a = SwitchCases (SwitchCasesM a)
+  deriving (Eq)
+
+data SwitchCasesUse a = SwitchCasesUse DLVar (SwitchCases a)
+
+instance Pretty a => Pretty (SwitchCasesUse a) where
+  pretty (SwitchCasesUse ov csm) =
+    "switch" <+> parens (pretty ov) <+> render_nest (concatWith (surround hardline) $ map pretty $ switchUses ov csm)
 
 instance IsPure a => IsPure (SwitchCases a) where
-  isPure = isPure . map (\(_,_,z)->z) . M.elems
+  isPure (SwitchCases m) = isPure $ map sc_k $ M.elems m
 
 data DLInvariant a = DLInvariant
   { dl_inv :: a
@@ -1272,15 +1369,15 @@ instance Pretty a => Pretty (DLInvariant a) where
 data DLStmt
   = DL_Nop SrcLoc
   | DL_Let SrcLoc DLLetVar DLExpr
-  | DL_ArrayMap SrcLoc DLVar [DLArg] [DLVar] DLVar DLBlock
-  | DL_ArrayReduce SrcLoc DLVar [DLArg] DLArg DLVar [DLVar] DLVar DLBlock
+  | DL_ArrayMap SrcLoc DLLetVar [DLArg] [DLVarLet] DLVarLet DLBlock
+  | DL_ArrayReduce SrcLoc DLLetVar [DLArg] DLArg DLVarLet [DLVarLet] DLVarLet DLBlock
   | DL_Var SrcLoc DLVar
   | DL_Set SrcLoc DLVar DLArg
   | DL_LocalDo SrcLoc (Maybe DLVar) DLTail
   | DL_LocalIf SrcLoc (Maybe DLVar) DLArg DLTail DLTail
   | DL_LocalSwitch SrcLoc DLVar (SwitchCases DLTail)
   | DL_Only SrcLoc (Either SLPart Bool) DLTail
-  | DL_MapReduce SrcLoc Int DLVar DLMVar DLArg DLVar DLVar DLBlock
+  | DL_MapReduce SrcLoc Int DLLetVar DLMVar DLArg DLVarLet DLVarLet DLVarLet DLBlock
   deriving (Eq)
 
 instance SrcLocOf DLStmt where
@@ -1295,7 +1392,7 @@ instance SrcLocOf DLStmt where
     DL_LocalIf a _ _ _ _ -> a
     DL_LocalSwitch a _ _ -> a
     DL_Only a _ _ -> a
-    DL_MapReduce a _ _ _ _ _ _ _ -> a
+    DL_MapReduce a _ _ _ _ _ _ _ _ -> a
 
 instance Pretty DLStmt where
   pretty = \case
@@ -1308,9 +1405,9 @@ instance Pretty DLStmt where
     DL_Set _at dv da -> pretty dv <+> "=" <+> pretty da <> semi
     DL_LocalDo _at ans k -> "do"  <> parens (pretty ans) <+> braces (pretty k) <> semi
     DL_LocalIf _at ans ca t f -> "local" <> parens (pretty ans) <+> prettyIfp ca t f
-    DL_LocalSwitch _at ov csm -> "local" <+> prettySwitch ov csm
+    DL_LocalSwitch _at ov csm -> "local" <+> pretty (SwitchCasesUse ov csm)
     DL_Only _at who b -> prettyOnly who b
-    DL_MapReduce _ _mri ans x z b a f -> prettyReduce ans x z b a () f
+    DL_MapReduce _ _mri ans x z b k a f -> prettyReduce ans x z b a k f
 
 instance IsPure DLStmt where
   isPure = \case
@@ -1324,7 +1421,7 @@ instance IsPure DLStmt where
     DL_LocalIf _ _ _ t f -> isPure t && isPure f
     DL_LocalSwitch _ _ csm -> isPure csm
     DL_Only _ _ b -> isPure b
-    DL_MapReduce _ _ _ _ _ _ _ f -> isPure f
+    DL_MapReduce _ _ _ _ _ _ _ _ f -> isPure f
 
 mkCom :: (DLStmt -> k -> k) -> DLStmt -> k -> k
 mkCom mk m k =
@@ -1523,9 +1620,6 @@ freshenVar :: HasCounter e => DLVar -> ReaderT e IO DLVar
 freshenVar (DLVar at s t _) =
   DLVar at s t <$> allocVarIdx
 
-class HasUntrustworthyMaps a where
-  getUntrustworthyMaps :: a -> Bool
-
 type InterfaceLikeMap a = M.Map (Maybe SLPart) (M.Map SLVar a)
 
 flattenInterfaceLikeMap_ :: forall a b . (SLPart -> a -> b) -> InterfaceLikeMap a -> M.Map SLPart b
@@ -1594,8 +1688,26 @@ adjustApiName who which qualify = prefix <> who <> suffix
 
 -- NOTE switch to Maybe DLAssignment and make sure we have a consistent order,
 -- like with M.toAscList
+data SvsPut = SvsPut
+  { svsp_svs :: DLVar
+  , svsp_val :: DLArg
+  }
+  deriving (Eq)
+
+instance Pretty SvsPut where
+  pretty (SvsPut {..}) = pretty svsp_svs <+> "<-" <+> pretty svsp_val
+
+data SvsGet = SvsGet
+  { svsg_svs :: DLVar
+  , svsg_var :: DLVarLet
+  }
+  deriving (Eq)
+
+instance Pretty SvsGet where
+  pretty (SvsGet {..}) = pretty svsg_var <+> ":=" <+> pretty svsg_svs
+
 data FromInfo
-  = FI_Continue [(DLVar, DLArg)]
+  = FI_Continue [SvsPut]
   | FI_Halt [DLArg]
   deriving (Eq)
 
@@ -1612,3 +1724,14 @@ instance Pretty a => Pretty (CInterval a) where
   pretty (CBetween f t) = pform "between" $ go f <+> go t
     where
       go = brackets . pretty
+
+data ALGOExitMode
+  = DeleteAndCloseOutAll_SoundASAs_UnsoundElse
+  | DeleteAndCloseOutASAs
+  deriving (Eq, Ord, Show, Read, Enum)
+
+defaultALGOExitMode :: ALGOExitMode
+defaultALGOExitMode = DeleteAndCloseOutAll_SoundASAs_UnsoundElse
+
+class HasALGOExitMode a where
+  getALGOExitMode :: a -> ALGOExitMode

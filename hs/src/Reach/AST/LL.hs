@@ -41,7 +41,7 @@ instance Pretty LLConsensus where
   pretty = \case
     LLC_Com x k -> prettyCom x k
     LLC_If _at ca t f -> prettyIfp ca t f
-    LLC_Switch _at ov csm -> prettySwitch ov csm
+    LLC_Switch _at ov csm -> pretty $ SwitchCasesUse ov csm
     LLC_FromConsensus _at _ret_at _fs k ->
       prettyCommit <> hardline <> pretty k
     LLC_While _at asn inv cond body k ->
@@ -70,14 +70,17 @@ instance Pretty LLStep where
       prettyToConsensus__ lls_tc_lct lls_tc_send lls_tc_recv lls_tc_mtime
 
 data LLOpts = LLOpts
-  { llo_untrustworthyMaps :: Bool
-  , llo_counter :: Counter
+  { llo_counter :: Counter
   , llo_droppedAsserts :: Counter
+  , llo_aem :: ALGOExitMode
   }
   deriving (Generic, Eq)
 
 instance HasCounter LLOpts where
-  getCounter (LLOpts {..}) = llo_counter
+  getCounter = llo_counter
+
+instance HasALGOExitMode LLOpts where
+  getALGOExitMode = llo_aem
 
 data LLProg = LLProg
   { llp_at :: SrcLoc

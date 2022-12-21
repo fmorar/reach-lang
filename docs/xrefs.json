@@ -727,25 +727,13 @@
     "title": "Reach is for Builders",
     "path": "/build/#build"
   },
-  "cfx-faq": {
-    "title": "FAQ",
-    "path": "/networks/#cfx-faq"
-  },
-  "cfx-faq-cplocal": {
-    "title": "How can I use ConfluxPortal with the Reach devnet?",
-    "path": "/networks/#cfx-faq-cplocal"
-  },
-  "cfx-faq-mainnet": {
-    "title": "How do I run my Reach DApp on CFX TestNet or MainNet?",
-    "path": "/networks/#cfx-faq-mainnet"
-  },
-  "cfx-faq-sponsor": {
-    "title": "How can I use gas and storage sponsorship?",
-    "path": "/networks/#cfx-faq-sponsor"
-  },
   "doc-index": {
     "title": "Index",
     "path": "/index/#doc-index"
+  },
+  "erc20": {
+    "title": "ERC20",
+    "path": "/tut/erc20/#erc20"
   },
   "guide": {
     "title": "Guide",
@@ -1003,12 +991,8 @@
     "title": "Creating an Account Handle",
     "path": "/frontend/#ref-frontends-js-acc"
   },
-  "ref-frontends-js-acc-cfx": {
-    "title": "Conflux-specific",
-    "path": "/frontend/#ref-frontends-js-acc-cfx"
-  },
   "ref-frontends-js-acc-eth": {
-    "title": "EVM-specific (Ethereum and Conflux)",
+    "title": "EVM-specific (Ethereum)",
     "path": "/frontend/#ref-frontends-js-acc-eth"
   },
   "ref-frontends-js-ask": {
@@ -1043,6 +1027,10 @@
     "title": "Utilities",
     "path": "/frontend/#ref-frontends-js-utils"
   },
+  "ref-frontends-providers-raw": {
+    "title": "Providers not using Wallets",
+    "path": "/frontend/#ref-frontends-providers-raw"
+  },
   "ref-frontends-rpc-cs": {
     "title": "C#",
     "path": "/rpc/cs/#ref-frontends-rpc-cs"
@@ -1058,6 +1046,10 @@
   "ref-frontends-rpc-py": {
     "title": "Python",
     "path": "/rpc/py/#ref-frontends-rpc-py"
+  },
+  "ref-frontends-wallets": {
+    "title": "Providers in Browsers via Wallets",
+    "path": "/frontend/#ref-frontends-wallets"
   },
   "ref-install": {
     "title": "Installation",
@@ -1082,10 +1074,6 @@
   "ref-network-algo": {
     "title": "Algorand",
     "path": "/networks/#ref-network-algo"
-  },
-  "ref-network-cfx": {
-    "title": "Conflux",
-    "path": "/networks/#ref-network-cfx"
   },
   "ref-network-eth": {
     "title": "Ethereum",

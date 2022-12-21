@@ -151,9 +151,8 @@ instance Freshen DLRemoteALGOSTR where
     RA_Tuple t -> RA_Tuple <$> fu t
 
 instance Freshen DLRemoteALGO where
-  fu (DLRemoteALGO a b c d e f g h i j k) =
-    DLRemoteALGO <$> fu a <*> fu b <*> fu c <*> fu d <*> fu e <*> fu f <*> fu g <*> fu h <*>
-                     fu i <*> fu j <*> fu k
+  fu (DLRemoteALGO {..}) =
+    DLRemoteALGO <$> fu ra_fees <*> fu ra_accounts <*> fu ra_assets <*> fu ra_addr2acc <*> fu ra_apps <*> fu ra_boxes <*> fu ra_onCompletion <*> fu ra_strictPay <*> fu ra_rawCall <*> fu ra_simNetRecv <*> fu ra_simTokensRecv <*> fu ra_simReturnVal <*> fu ra_txnOrderForward
 
 instance Freshen AS.Value where
   fu = return
@@ -186,8 +185,8 @@ instance Freshen DLExpr where
     DLE_CheckPay at x y z -> DLE_CheckPay at x <$> fu y <*> fu z
     DLE_Wait at x -> DLE_Wait at <$> fu x
     DLE_PartSet at x y -> DLE_PartSet at x <$> fu y
-    DLE_MapRef at mv fa -> DLE_MapRef at mv <$> fu fa
-    DLE_MapSet at mv fa na -> DLE_MapSet at mv <$> fu fa <*> fu na
+    DLE_MapRef at mv fa vt -> DLE_MapRef at mv <$> fu fa <*> pure vt
+    DLE_MapSet at mv fa vt na -> DLE_MapSet at mv <$> fu fa <*> pure vt <*> fu na
     DLE_Remote at fs av rt dr -> DLE_Remote at fs <$> fu av <*> pure rt <*> fu dr
     DLE_TokenNew at tns -> DLE_TokenNew at <$> fu tns
     DLE_TokenBurn at tok amt -> DLE_TokenBurn at <$> fu tok <*> fu amt
@@ -203,8 +202,11 @@ instance Freshen DLExpr where
     DLE_TupleSet at a b c -> DLE_TupleSet at <$> fu a <*> pure b <*> fu c
     DLE_ContractFromAddress at a -> DLE_ContractFromAddress at <$> fu a
 
-instance {-# OVERLAPS #-} Freshen k => Freshen (SwitchCases k) where
-  fu = mapM (\(vn, vnu, k) -> (,,) <$> fu_v vn <*> pure vnu <*> (newScope $ fu k))
+instance Freshen k => Freshen (SwitchCase k) where
+  fu (SwitchCase {..}) = SwitchCase <$> fu_v sc_vl <*> (newScope $ fu sc_k)
+
+instance Freshen k => Freshen (SwitchCases k) where
+  fu (SwitchCases m) = SwitchCases <$> fu m
 
 instance Freshen DLStmt where
   fu = \case
@@ -234,13 +236,14 @@ instance Freshen DLStmt where
       i' <- fu_v i
       fb' <- fu fb
       return $ DL_ArrayReduce at ans' x' z' b' a' i' fb'
-    DL_MapReduce at mri ans x z b a fb -> do
+    DL_MapReduce at mri ans x z b k a fb -> do
       ans' <- fu_v ans
       z' <- fu z
       b' <- fu_v b
+      k' <- fu_v k
       a' <- fu_v a
       fb' <- fu fb
-      return $ DL_MapReduce at mri ans' x z' b' a' fb'
+      return $ DL_MapReduce at mri ans' x z' b' k' a' fb'
     DL_LocalDo at mans t -> DL_LocalDo at <$> fu mans <*> fu t
 
 instance Freshen DLPayAmt where
@@ -300,9 +303,12 @@ instance Freshen LLStep where
     LLS_ToConsensus at lct send recv mtime ->
       LLS_ToConsensus at <$> fu lct <*> fu send <*> fu recv <*> (newScope $ fu mtime)
 
+instance Freshen SvsPut where
+  fu (SvsPut {..}) = SvsPut svsp_svs <$> fu svsp_val
+
 instance Freshen FromInfo where
   fu = \case
-    FI_Continue vs -> FI_Continue <$> (forM vs $ \(v, a) -> (,) v <$> fu a)
+    FI_Continue vs -> FI_Continue <$> mapM fu vs
     FI_Halt toks -> FI_Halt <$> mapM fu toks
 
 instance Freshen ([DLArg], DLPayAmt, DLArg, [DLVar], Bool) where

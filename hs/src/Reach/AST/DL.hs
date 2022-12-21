@@ -85,8 +85,8 @@ mkAnnot a = StmtAnnot {..}
 
 data DLSStmt
   = DLS_Let SrcLoc DLLetVar DLExpr
-  | DLS_ArrayMap SrcLoc DLVar [DLArg] [DLVar] DLVar DLSBlock
-  | DLS_ArrayReduce SrcLoc DLVar [DLArg] DLArg DLVar [DLVar] DLVar DLSBlock
+  | DLS_ArrayMap SrcLoc DLLetVar [DLArg] [DLVarLet] DLVarLet DLSBlock
+  | DLS_ArrayReduce SrcLoc DLLetVar [DLArg] DLArg DLVarLet [DLVarLet] DLVarLet DLSBlock
   | DLS_If SrcLoc (Maybe DLVar) DLArg StmtAnnot DLStmts DLStmts
   | DLS_Switch SrcLoc DLVar StmtAnnot (SwitchCases DLStmts)
   | DLS_Return SrcLoc Int DLArg
@@ -111,7 +111,7 @@ data DLSStmt
   | DLS_Continue SrcLoc DLAssignment
   | DLS_FluidSet SrcLoc FluidVar DLArg
   | DLS_FluidRef SrcLoc DLVar FluidVar
-  | DLS_MapReduce SrcLoc Int DLVar DLMVar DLArg DLVar DLVar DLSBlock
+  | DLS_MapReduce SrcLoc Int DLLetVar DLMVar DLArg DLVarLet DLVarLet DLVarLet DLSBlock
   | DLS_Throw SrcLoc DLArg Bool
   | DLS_Try SrcLoc DLStmts DLVar DLStmts
   | DLS_ViewIs SrcLoc (Maybe SLPart) SLVar (Maybe DLSExportBlock)
@@ -141,8 +141,7 @@ instance Pretty DLSStmt where
       DLS_ArrayReduce _ ans x z b a i f -> prettyReduce ans x z b a i f
       DLS_If _ _ ca sa ts fs ->
         prettyIf (pretty ca <+> braces (pretty sa)) (render_dls ts) (render_dls fs)
-      DLS_Switch _ ov sa csm ->
-        prettySwitch (pretty ov <+> braces (pretty sa)) csm
+      DLS_Switch _ ov _ csm -> pretty $ SwitchCasesUse ov csm
       DLS_Return _ ret rv ->
         "throw" <> parens (pretty rv) <> ".to" <> parens (viaShow ret) <> semi
       DLS_Prompt _ ret sa bodys ->
@@ -165,7 +164,7 @@ instance Pretty DLSStmt where
         "fluid" <+> pretty fv <+> ":=" <+> pretty da
       DLS_FluidRef _ dv fv ->
         pretty dv <+> "<-" <+> "fluid" <+> pretty fv
-      DLS_MapReduce _ _mri ans x z b a f -> prettyReduce ans x z b a () f
+      DLS_MapReduce _ _mri ans x z b k a f -> prettyReduce ans x z b a k f
       DLS_Throw _ dv local -> if local then "local" else "nonlocal" <+> "throw" <+> pretty dv
       DLS_Try _ e hv hs -> "try" <+> ns e <+> "catch" <+> parens (pretty hv) <+> ns hs
       DLS_ViewIs _ v k a -> prettyViewIs v k a
@@ -195,7 +194,7 @@ instance SrcLocOf DLSStmt where
     DLS_Continue a _ -> a
     DLS_FluidSet a _ _ -> a
     DLS_FluidRef a _ _ -> a
-    DLS_MapReduce a _ _ _ _ _ _ _ -> a
+    DLS_MapReduce a _ _ _ _ _ _ _ _ -> a
     DLS_Throw a _ _ -> a
     DLS_Try a _ _ _ -> a
     DLS_ViewIs a _ _ _ -> a
@@ -273,15 +272,18 @@ instance Pretty DLSBlock where
 
 data DLOpts = DLOpts
   { dlo_verifyArithmetic :: Bool
-  , dlo_untrustworthyMaps :: Bool
   , dlo_verifyPerConnector :: Bool
   , dlo_autoTrackPublishedTokens :: Bool
   , dlo_connectors :: Connectors
   , dlo_counter :: Counter
   , dlo_bals :: Int
   , dlo_droppedAsserts :: Counter
+  , dlo_aem :: ALGOExitMode
   }
   deriving (Eq, Generic)
+
+instance HasALGOExitMode DLOpts where
+  getALGOExitMode = dlo_aem
 
 instance Pretty DLOpts where
   pretty = \case

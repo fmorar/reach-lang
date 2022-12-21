@@ -31,9 +31,10 @@ instance {-# OVERLAPS #-} (Subst a, Subst b, Subst c) => Subst (a, b, c) where
   subst (x, y, z) = (,,) <$> subst x <*> subst y <*> subst z
 
 instance {-# OVERLAPS #-} Subst a => Subst (SwitchCases a) where
-  subst csm = mapM go csm
-    where
-      go (a, b, c) = (,,) a b <$> subst c
+  subst (SwitchCases csm) = SwitchCases <$> mapM subst csm
+
+instance {-# OVERLAPS #-} Subst a => Subst (SwitchCase a) where
+  subst (SwitchCase {..}) = SwitchCase sc_vl <$> subst sc_k
 
 instance Subst Bool where
   subst = return
@@ -91,9 +92,8 @@ instance Subst DLRemoteALGOSTR where
     RA_Tuple t -> RA_Tuple <$> subst t
 
 instance Subst DLRemoteALGO where
-  subst (DLRemoteALGO a b c d e f g h i j k) =
-    DLRemoteALGO <$> subst a <*> subst b <*> subst c <*> subst d <*> subst e <*> subst f <*>
-                 subst g <*> subst h <*> subst i <*> subst j <*> subst k
+  subst (DLRemoteALGO {..}) =
+    DLRemoteALGO <$> subst ra_fees <*> subst ra_accounts <*> subst ra_assets <*> subst ra_addr2acc <*> subst ra_apps <*> subst ra_boxes <*> subst ra_onCompletion <*> subst ra_strictPay <*> subst ra_rawCall <*> subst ra_simNetRecv <*> subst ra_simTokensRecv <*> subst ra_simReturnVal <*> subst ra_txnOrderForward
 
 instance Subst AS.Value where
   subst = return
@@ -126,8 +126,8 @@ instance Subst DLExpr where
     DLE_CheckPay at x y z -> DLE_CheckPay at x <$> subst y <*> subst z
     DLE_Wait at x -> DLE_Wait at <$> subst x
     DLE_PartSet at x y -> DLE_PartSet at x <$> subst y
-    DLE_MapRef at mv fa -> DLE_MapRef at mv <$> subst fa
-    DLE_MapSet at mv fa na -> DLE_MapSet at mv <$> subst fa <*> subst na
+    DLE_MapRef at mv fa vt -> DLE_MapRef at mv <$> subst fa <*> pure vt
+    DLE_MapSet at mv fa vt na -> DLE_MapSet at mv <$> subst fa <*> pure vt <*> subst na
     DLE_Remote at fs av rt dr -> DLE_Remote at fs <$> subst av <*> pure rt <*> subst dr
     DLE_TokenNew at tns -> DLE_TokenNew at <$> subst tns
     DLE_TokenBurn at tok amt -> DLE_TokenBurn at <$> subst tok <*> subst amt
@@ -156,8 +156,8 @@ instance Subst DLStmt where
     DL_LocalIf at mans c t f -> DL_LocalIf at <$> subst mans <*> subst c <*> subst t <*> subst f
     DL_LocalSwitch at v csm -> DL_LocalSwitch at <$> subst v <*> subst csm
     DL_Only at who b -> DL_Only at who <$> subst b
-    DL_MapReduce at mri x a b u v bl ->
-      DL_MapReduce at mri x a <$> subst b <*> pure u <*> pure v <*> subst bl
+    DL_MapReduce at mri x a b u k v bl ->
+      DL_MapReduce at mri x a <$> subst b <*> pure u <*> pure k <*> pure v <*> subst bl
     DL_LocalDo at mans t -> DL_LocalDo at <$> subst mans <*> subst t
 
 instance Subst DLTail where
@@ -168,8 +168,17 @@ instance Subst DLTail where
 instance Subst DLBlock where
   subst (DLBlock at fs t a) = DLBlock at fs <$> subst t <*> subst a
 
+instance {-# OVERLAPS #-} (Subst a) => Subst (DLinExportBlock a) where
+  subst (DLinExportBlock at mdom x) = DLinExportBlock at mdom <$> subst x
+
 instance Subst DLAssignment where
   subst (DLAssignment m) = DLAssignment <$> subst m
+
+instance Subst SvsPut where
+  subst (SvsPut {..}) = SvsPut svsp_svs <$> subst svsp_val
+
+instance Subst SvsGet where
+  subst = return
 
 instance Subst FromInfo where
   subst = \case
