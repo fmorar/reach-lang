@@ -182,8 +182,8 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
           doc.querySelector('#book-col').style.display = "none";
         }, false)
       }
-      if (index >= 24 && index <= 27){
-        if(index === 24){
+      if (index >= 25 && index <= 27){
+        if(index === 25){
           item.parentNode.classList.add('first-bottom-chapter')
         }
         item.classList.add('bottom-chapter');

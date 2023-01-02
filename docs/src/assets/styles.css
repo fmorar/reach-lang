@@ -77,6 +77,7 @@ main {
   --otp-col-background: #1a1c23;
   --otp-col-list-a: #404040;
   --link-no-hover: #4536da;
+  --link-no-hover-card: #4536da;
   --link-hover: #2b506e;
   --img-hh-shadow: #cccccc;
   --punch-span: #f45747;
@@ -155,6 +156,7 @@ main {
     --otp-col-background: #999999;
     --otp-col-list-a: #909090;
     --link-no-hover: #4536da;
+    --link-no-hover-card: #FFFFFF;
     --link-hover: #2b506e;
     --img-hh-shadow: #cccccc;
     --punch-span: #f45747;
@@ -233,6 +235,7 @@ main {
   --otp-col-background: #999999;
   --otp-col-list-a: #909090;
   --link-no-hover: #4536da;
+  --link-no-hover-card: #FFFFFF;
   --link-hover: #2b506e;
   --img-hh-shadow: #cccccc;
   --punch-span: #f45747;
@@ -851,6 +854,7 @@ i.fa-angle-right {
   flex-direction: column;
   align-items: center;
   align-content: center;
+  justify-content: center;
 }
 
 .fa-caret-down{
@@ -1023,6 +1027,10 @@ i.fas:hover {
 #page-col div#hh-viewer ul:not(.nav) li {
   background-color: var(--list-background);
   padding: 0.5rem;
+}
+
+#page-col div#hh-viewer ul:not(.nav) li a {
+  color: var(--link-no-hover-card);
 }
 
 #page-col div#hh-viewer .diamondList ul {
