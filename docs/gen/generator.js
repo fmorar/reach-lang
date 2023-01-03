@@ -437,6 +437,8 @@ const processMd = async ({baseConfig, relDir, in_folder, iPath, oPath}) => {
   };
 
   const directive_note = makeDirectiveWithClass("note");
+  const directive_diamondList = makeDirectiveWithClass("diamondList");
+  const directive_discList = makeDirectiveWithClass("discList");
   const directive_alongside = makeDirectiveWithClass("row gx-3");
   const directive_alongsideColumn = makeDirectiveWithClass("col-xl-4 col-md-6 col-sm-12");
 
@@ -509,7 +511,7 @@ const processMd = async ({baseConfig, relDir, in_folder, iPath, oPath}) => {
   const rcHead = (ver) => `_Available in release candidate ${ver} and later..._`;
   const rcNext = (ver) => `_Available in the next release candidate, which will be ${ver}..._`;
 
-  const expanderEnv = { seclink, defn, workshopDeps, workshopInit, workshopWIP, errver, externalRef, ref, tooltip, directive_note, directive_hiddenNote, directive_alongside, directive_alongsideColumn, directive_testQ, directive_testA, generateIndex, verOld, verCur, verRC, rcHead, rcNext };
+  const expanderEnv = { seclink, defn, workshopDeps, workshopInit, workshopWIP, errver, externalRef, ref, tooltip, directive_note, directive_diamondList, directive_discList, directive_hiddenNote, directive_alongside, directive_alongsideColumn, directive_testQ, directive_testA, generateIndex, verOld, verCur, verRC, rcHead, rcNext };
 
   const expanderDirective = () => (tree) => {
     visit(tree, (node) => {
@@ -764,7 +766,7 @@ const processMd = async ({baseConfig, relDir, in_folder, iPath, oPath}) => {
       chEl.appendChild(mkEl(`&nbsp;`));
     }
     const cpEl = doc.createElement('a');
-    cpEl.classList.add("far", "fa-copy", "copyBtn");
+    cpEl.classList.add("far", "fa-solid", "fa-copy", "copyBtn");
     const copyCode = ( spec.language === 'cmd' ) ?
       rawCode.replace(/^\$ /, '') : rawCode;
     cpEl.setAttribute("data-clipboard-text",
@@ -777,10 +779,15 @@ const processMd = async ({baseConfig, relDir, in_folder, iPath, oPath}) => {
     cpEl.setAttribute('title', 'Copy to clipboard');
 
     chEl.appendChild(cpEl);
-    pre.append(chEl);
-    pre.append(mkEl(olStr));
-    pre.classList.add('snippet');
     const shouldNumber = spec.numbered && hasSome;
+    if (shouldNumber){
+      pre.append(chEl);
+      pre.append(mkEl(olStr));
+    } else {
+      pre.append(mkEl(olStr));
+      pre.append(chEl);
+    }
+    pre.classList.add('snippet');
     pre.classList.add(shouldNumber ? 'numbered' : 'unnumbered');
     linkifySpans(pre, spec.language);
   }
@@ -791,10 +798,9 @@ const processMd = async ({baseConfig, relDir, in_folder, iPath, oPath}) => {
     if ( ! le ) { continue; }
     const lang = rt.slice(2, le);
     const rc = rt.slice(le+2);
-    const hc = await shikiHighlight(rc, lang);
     const s = doc.createElement('span');
     s.classList.add('snip');
-    s.appendChild(mkEl(hc));
+    s.appendChild(mkEl(rc));
     linkifySpans(s, lang);
     c.outerHTML = s.outerHTML;
   }
@@ -849,7 +855,8 @@ const generateBook = async (destp, bookp) => {
       d.children.push(h('div', {class: "col-auto chapter-empty-col"}));
     } else {
       d.children.push(h('div', {class: "col-auto chapter-icon-col"}, [
-        h('i', {class: "chapter-icon fas fa-angle-right"})
+        h('i', {class: "chapter-icon fas fa-solid fa-diamond"}),
+        h('div', {class: "chapter-line-marker closed"})
       ]));
       cs.push(h('div', {class: "pages", style: "display:none"},
         hifyList(ctc)
@@ -875,9 +882,7 @@ const generateBook = async (destp, bookp) => {
     const bcPush = () => {
       bc.push(
         h('div', {class: "row chapter dynamic"}, [
-          h('div', {class: "col-auto chapter-icon-col"}, [
-            h('i', {class: "fas fa-angle-down"})
-          ]),
+          h('div', {class: "col-auto chapter-empty-col"}),
           h('div', {class: "col my-auto"}, [
             h('a', {class: "book-title", href: hh(ct.here)}, ct.title)
           ]),

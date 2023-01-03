@@ -33,7 +33,7 @@ serve-up: serve-down
 serve-down:
 	docker rm --force $(NAME)
 
-WATCHES = ./dev ./src Dockerfile Makefile
+WATCHES = ./gen ./src Dockerfile Makefile
 define WATCH
   do clear \
    ; date \

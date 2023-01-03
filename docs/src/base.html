@@ -22,15 +22,18 @@
 
     const initializeThemeSwitcher = () => {
       const { classList } = document.documentElement;
-      const toggle = document.getElementById("themeToggler");
+      const toggle = document.querySelectorAll(".themeToggler");
+      const brand = document.querySelector(".navbar-brand");
       if (window.matchMedia && window.matchMedia(
         '(prefers-color-scheme: dark)'
       ).matches) {
         classList.add("night");
-        toggle.innerHTML = `<i class="fas fa-sun fa-lg"></i>`;
+        toggle.forEach(e => e.innerHTML = `<img src="/assets/img/sun.svg" alt="light mode">`);
+        brand.innerHTML= `<img src="/assets/logo-dark.svg" alt="logo">`;
       } else {
         classList.add("day");
-        toggle.innerHTML = `<i class="fas fa-moon fa-lg"></i>`;
+        toggle.forEach(e => e.innerHTML = `<img src="/assets/img/moon.svg" alt="dark mode">`);
+        brand.innerHTML= `<img src="/assets/logo-light.svg" alt="logo">`;
       }
     };
     const setDisplayStyleFor = (id) => {
@@ -50,119 +53,146 @@
       localStorage.setItem(item, "none");
     };
 
+    const setSearchDisplay= (_event, display ) => {
+      const searchModal= document.querySelector(".search-modal")
+      const overlay= document.querySelector(".overlay")
+      const bookCol= document.getElementById("book-col")
+      const otpCol = document.getElementById("otp-col")
+      let hideSearch = () => {
+        searchModal.style.display="none"
+        overlay.removeEventListener("click", hideSearch);
+        if((bookCol.style.display==="block" || otpCol.style.display==="block") && window.innerWidth <= 576){
+        overlay.style.zIndex = 2
+        } else {
+          overlay.style.display="none"
+        }
+      }
+      overlay.addEventListener("click", hideSearch, false)
+      searchModal.style.display=display
+      overlay.style.display=display
+      if((bookCol.style.display==="block" || otpCol.style.display==="block") && window.innerWidth <= 576){
+        overlay.style.zIndex = 3
+      }
+    };
+ 
+
     // https://stackoverflow.com/a/68824350
     const toggleTheme = () => {
       const { classList } = document.documentElement;
-      const toggle = document.getElementById("themeToggler");
+      const toggle = document.querySelectorAll(".themeToggler");
+      const brand = document.querySelector(".navbar-brand");
+      const footer=document.querySelector(".footer")
+      const search=document.querySelector(".search-bar .nav-link")
+      const searchIcon=document.getElementById("search-icon")
       if (classList.contains("day")) {
         classList.replace("day", "night");
-        toggle.innerHTML = `<i class="fas fa-sun fa-lg"></i>`;
+        toggle.forEach(e => e.innerHTML = `<img src="/assets/img/sun.svg" alt="light mode">`);
+        brand.innerHTML= `<img src="/assets/logo-dark.svg" alt="logo">`;
+        footer.style.backgroundImage= `url("../assets/img/background-footer-repeat-dark.svg")`
+        if (!searchIcon.classList.contains("fa-search")) {
+          search.innerHTML= `<img src="/assets/img/search-dark.svg" id="search-icon" alt="search bar">`;
+        }
       } else if (classList.contains("night")) {
         classList.replace("night", "day");
-        toggle.innerHTML = `<i class="fas fa-moon fa-lg"></i>`;
+        toggle.forEach(e => e.innerHTML = `<img src="/assets/img/moon.svg" alt="dark mode">`);
+        brand.innerHTML= `<img src="/assets/logo-light.svg" alt="logo">`;
+        footer.style.backgroundImage= `url("../assets/img/background-footer-repeat.svg")`
+        if (!searchIcon.classList.contains("fa-search")) {
+          search.innerHTML= `<img src="/assets/img/search-light.svg" id="search-icon" alt="search bar">`;
+        }
       }
     };
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link href="https://uploads-ssl.webflow.com/627a9662f6627643e7654761/css/reach-platform.webflow.92b3e72b5.css" rel="stylesheet" type="text/css">
+  <link rel="icon" type="image/png" href="./assets/favicon.png">
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/instantsearch.css@7.3.1/themes/reset-min.css" integrity="sha256-t2ATOGCtAIZNnzER679jwcFcKYfLlw01gli6F6oszk8=" crossorigin="anonymous">
-  <link rel="stylesheet" type="text/css" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css">
+  <link rel="stylesheet" type="text/css" href="https://use.fontawesome.com/releases/v6.2.0/css/all.css">
   <link rel="stylesheet" type="text/css" href="/assets/styles.css?v=57">
+  <link rel="stylesheet" type="text/css" href="/components/styles.css?v=57">
 </head>
 
 <body class="container-fluid noscroll">
 
-  <div class="row">
-    <header class="navbar navbar-expand-lg navbar-dark bg-dark" role="navigation">
-      <a class="navbar-brand" href="@{xrefHref('reach-top')}"><img src="/assets/logo.png" width="32" height="26" alt="logo"></a>
-      <a id="mi-home" class="navbar-brand" href="@{xrefHref('reach-top')}">Reach</a>
+  <div class="row row-navbar">
+    <header id="navbar-toggle" class="navbar navbar-expand-lg navbar-light justify-content-between" role="navigation">
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-collapse"><span class="navbar-toggler-icon"></span></button>
-      <div class="collapse navbar-collapse" id="navbar-collapse">
-
-        <div class="navbar-nav me-auto">
-          @{menuItem('ref-programs')}
-          @{menuItem('ref-frontends')}
-          @{menuItem('tuts')}
-          @{menuItem('guide-changelog')}
-        </div>
-
+      <div>
+        <a class="navbar-brand" href="@{xrefHref('reach-top')}"><img src="/assets/logo-dark.svg" alt="logo"></a>
+      </div>
+      <div class="navbar-nav ms-lg-2 search-bar" style="cursor: pointer">
+        <a class="nav-link" onclick="setSearchDisplay(event, 'block')">
+          <img src="/assets/img/search-light.svg" id="search-icon" alt="search bar">
+        </a>
+      </div>
+      <div class="collapse navbar-collapse justify-content-end" id="navbar-collapse">
         <div class="navbar-nav">
-          <a class="nav-link follow" href="https://reach.sh/">reach.sh</a>
+          <a class="nav-link follow" href="https://reach.sh/">
+            <p class="border-link">To Reach.sh</p>
+            </a>
         </div>
-
-        <div class="navbar-nav" style="cursor: pointer;">
-          <li class="nav-item nav-link">
-            <a class="nav-link-a"  id="themeToggler" onclick="toggleTheme()"></a>
-            <a class="nav-link-a follow" target="_blank" href="https://github.com/reach-sh/reach-lang/discussions"><i class="fas fa-comments fa-lg"></i></a>
-            <a class="nav-link-a follow" target="_blank" href="https://discord.com/invite/AZsgcXu"><i class="fab fa-discord fa-lg"></i></a>
-            <a class="nav-link-a follow" target="_blank" href="https://github.com/reach-sh/reach-lang"><i class="fab fa-github fa-lg"></i></a>
-            <a class="nav-link-a follow" target="_blank" href="https://twitter.com/reachlang"><i class="fab fa-twitter fa-lg"></i></a>
-            <a class="nav-link-a follow" target="_blank" href="https://www.youtube.com/c/Reachsh"><i class="fab fa-youtube fa-lg"></i></a>
-            <a class="nav-link-a follow" target="_blank" href="https://www.reddit.com/r/reach_sh"><i class="fab fa-reddit-square fa-lg"></i></a>
-          </li>
+        <div class="navbar-nav">
+          <a class="nav-link themeToggler"  onclick="toggleTheme()"></a>
         </div>
-
-        <div class="navbar-nav ms-1 ms-lg-2" style="cursor: pointer;">
-          @{menuItem(
-            'search',
-            '<i class="fas fa-search fa-lg" id="search-icon"></i>'
-          )}
-        </div>
-
       </div>
     </header>
   </div>
 
-  <main class="row">
+  <main class="row row-border">
 
     <!--BOOK COLUMN-->
     <div id="book-col" class="col display" style="display:none;">
-      <div class="col-auto x-icon-col" style="float: right; display: flex;">
+      <div id="toggle-icon" class="col-auto x-icon-col" style="float: right; display: flex;align-items: center;">
         <button
-          class="btn btn-outline-secondary btn-sm hide-book-icon"
+          class="btn btn-toggle btn-sm hide-book-icon"
           onclick="setItemToNone(event, 'book-col')"
         >
-          <img
-            alt="close left sidebar"
-            src="/assets/icons/Colorway=Light Mode, State=Hover, Action=Collapse.svg"
-          />
+        <i class="fa-solid fa-angles-left"></i>
         </button>
+        <div id="bookToggler">
+          <a class="themeToggler" onclick="toggleTheme()"></a>
+        </div>
+      </div>
+      <div class="navbar-nav" style="cursor: pointer;">
+        <p class="nav-text">Connect with us</p>
+        <li class="nav-item nav-link">
+          <a class="nav-link-a follow" href="https://github.com/reach-sh/reach-lang/discussions"><i class="fas fa-comments fa-lg"></i></a>
+          <a class="nav-link-a follow" href="https://discord.com/invite/AZsgcXu"><i class="fab fa-discord fa-lg"></i></a>
+          <a class="nav-link-a follow" href="https://github.com/reach-sh/reach-lang"><i class="fab fa-github fa-lg"></i></a>
+          <a class="nav-link-a follow" href="https://twitter.com/reachlang"><i class="fab fa-twitter fa-lg"></i></a>
+          <a class="nav-link-a follow" href="https://www.youtube.com/c/Reachsh"><i class="fab fa-youtube fa-lg"></i></a>
+          <a class="nav-link-a follow" href="https://www.reddit.com/r/reach_sh"><i class="fab fa-reddit-square fa-lg"></i></a>
+        </li>
       </div>
     </div>
     <!--END BOOK COLUMN-->
 
     <!--PAGE COLUMN-->
     <div id="page-col" class="col display" style="display:none;">
-      <div id="hh-viewer-wrapper" style="margin-right: auto; margin-left: auto;">
+      <div id="hh-viewer-wrapper" style="margin-right: auto; margin-left: auto; margin-top: 50px; width: 100%;">
         <div id="hh-page-header">
           <div class="row">
-            <div class="col-auto show-book-col pe-0">
+            <div class="col-auto show-book-col pe-0" style="display:flex;align-items: center;">
               <button
-                class="btn btn-outline-secondary btn-sm show-book-col"
+                class="btn btn-toggle btn-sm show-book-col"
                 onclick="setItemToBlock(event, 'book-col')"
               >
-                <img
-                  alt="expand left sidebar"
-                  src="/assets/icons/Colorway=Dark Mode, State=Hover, Action=Expand.svg"
-                />
+              <i class="fa-solid fa-angles-left"></i>
               </button>
             </div>
 
             <div class="col">
               <div class="row">
                 <div class="col"><span class="title">&nbsp;</span></div>
-                <div class="col-auto">
+                <div class="col-auto" style="display:flex;align-items: center;">
                   <div class="btn-group btn-group-sm" role="group" aria-label="">
                     <a id="edit-btn" class="btn btn-outline-secondary btn-sm"><i class="fas fa-pencil-alt"></i></a>
                     <button
-                      class="btn btn-outline-secondary btn-sm show-otp-col"
+                      class="btn btn-toggle btn-sm show-otp-col"
                       onclick="setItemToBlock(event, 'otp-col')"
                     >
-                      <img
-                        alt="open right sidebar"
-                        src="/assets/icons/Colorway=Light Mode, State=Hover, Action=Collapse.svg"
-                      />
+                      <i class="fa-solid fa-angles-left"></i>
                     </button>
                   </div>
                 </div>
@@ -175,26 +205,42 @@
           <button class="btn btn-outline-dark btn-sm dropdown-toggle" type="button" id="versions" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Choose a version</button>
           <div class="dropdown-menu" aria-labelledby="versions"></div>
         </div> -->
-        <div id="hh-viewer"></div>
+        <div id="hh-viewer">
+      
+        </div>
       </div>
+      <div class="footer"></div>
     </div>
     <!--END PAGE COLUMN-->
 
     <!--OTP COLUMN-->
     <div id="otp-col" class="col display" style="display:none;">
+      <section class="p-2">
+        <a href="https://discord.com/invite/AZsgcXu">
+          <div class="first-row social-hover">
+            <img class="banner" src="../assets/img/social.svg" />
+            <svg xmlns="http://www.w3.org/2000/svg" class="img-fluid p-1 arrow" width="65" height="65" viewBox="0 0 65 65" fill="none"><path d="M21.4025 21.9783L21.4025 25.7506L36.3443 25.7639L20.0649 42.0434L22.7402 44.7187L39.0196 28.4393L39.033 43.381L42.8052 43.381L42.8052 21.9783L21.4025 21.9783Z" fill="currentColor"/></svg>
+             <svg xmlns="http://www.w3.org/2000/svg" class="img-fluid p-1" width="94" height="68" viewBox="0 0 94 68" fill="none"><path d="M69.0674 67.9872C69.0674 67.9872 66.1828 64.5102 63.7873 61.459C74.2838 58.4929 78.2882 51.915 78.2882 51.915C75.404 53.8336 72.3133 55.4213 69.0745 56.648C65.3488 58.2439 61.4506 59.4012 57.4582 60.0966C50.5961 61.3631 43.5583 61.3366 36.706 60.0185C32.6822 59.2334 28.7391 58.079 24.9266 56.5699C22.9178 55.7963 20.9641 54.8859 19.0795 53.8451C18.8385 53.6819 18.5975 53.6038 18.3707 53.4406C18.2498 53.3817 18.1414 53.2998 18.0518 53.1994C16.6343 52.3975 15.8051 51.837 15.8051 51.837C15.8051 51.837 19.6536 58.2233 29.8241 61.3029C27.4002 64.347 24.4376 67.9872 24.4376 67.9872C6.7331 67.3982 0 55.7681 0 55.7681C0 29.9391 11.5384 8.99916 11.5384 8.99916C23.0768 0.335095 34.0553 0.576355 34.0553 0.576355L34.8562 1.54139C20.4332 5.71377 13.7781 12.0504 13.7781 12.0504C13.7781 12.0504 15.5428 11.0853 18.5054 9.72294C27.0812 5.95503 33.8923 4.91193 36.6989 4.67068C37.1465 4.574 37.6021 4.51936 38.0597 4.50747C43.4276 3.80885 48.8596 3.75407 54.2404 4.34426C62.6976 5.31699 70.8834 7.93474 78.3379 12.0504C78.3379 12.0504 72.03 6.03308 58.4079 1.86071L59.5348 0.576355C59.5348 0.576355 70.5062 0.335095 82.0446 8.99916C82.0446 8.99916 93.583 29.9391 93.583 55.7681C93.5547 55.7681 86.772 67.3982 69.0674 67.9872ZM31.8086 30.4997C27.2443 30.4997 23.6367 34.5088 23.6367 39.405C23.6367 44.3011 27.3222 48.3032 31.8086 48.3032C36.295 48.3032 39.9804 44.294 39.9804 39.405C39.9804 34.5159 36.3729 30.4997 31.8086 30.4997ZM61.0515 30.4997C56.4872 30.4997 52.8797 34.5088 52.8797 39.405C52.8797 44.3011 56.5651 48.3032 61.0515 48.3032C65.5379 48.3032 69.2234 44.294 69.2234 39.405C69.2234 34.5159 65.6229 30.4997 61.0515 30.4997Z" fill="currentColor"/></svg>
+            <div class="p-1">
+              <p class="social" class="card-text mt-2">Join us</p>
+              <p class="social-text" class="card-text mt-2">
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ipsum
+                quam inte
+              </p>
+            </div> 
+          </div>
+        </a>
+      </section>
       <ul>
         <li class="active top">
           <div class="row">
             <div class="col my-auto"><a href="#on-this-page" class="active otp-link">On This Page</a></div>
             <div class="col-auto my-auto">
               <button
-                class="btn btn-outline-secondary btn-sm hide-otp-icon"
+                class="btn btn-toggle btn-sm hide-otp-icon"
                 onclick="setItemToNone(event, 'otp-col')"
               >
-                <img
-                  alt="close right sidebar"
-                  src="/assets/icons/Colorway=Dark Mode, State=Hover, Action=Expand.svg"
-                />
+              <i class="fa-solid fa-angles-right"></i>
               </button>
             </div>
           </div>
@@ -202,6 +248,8 @@
       </ul>
     </div>
     <!--END OTP COLUMN-->
+    <div class="overlay" style="display:none;"></div>
+    <div class="search-modal" style="display:none;"></div>
 
   </main>
   <script src="https://cdn.jsdelivr.net/npm/axios@0.24.0/dist/axios.min.js"></script>
@@ -210,7 +258,12 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/algoliasearch@4.5.1/dist/algoliasearch-lite.umd.js" integrity="sha256-EXPXz4W6pQgfYY3yTpnDa3OH8/EPn16ciVsPQ/ypsjk=" crossorigin="anonymous"></script>
   <script src="/assets/scripts.js?v=61" type="module"></script>
-
+  <!-- Cargamos nuestro componente de React. -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>  
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script type="text/babel" src="/components/Footer.jsx"></script>
+  <script type="text/babel" src="/components/Search.jsx"></script>
 </body>
 
 </html>

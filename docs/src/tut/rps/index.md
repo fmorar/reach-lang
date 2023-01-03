@@ -121,12 +121,14 @@ configure it to treat Reach (`.rsh`) files as JavaScript and things will be most
 
 This is just a shell of a program that doesn't do much, but it has a few important components.
 
+:::diamondList
 + Line 1 indicates that this is a Reach program.
 You'll always have this at the top of every program.
 + Line 3 defines the main export from the program.
 When you compile, this is what the compiler will look at.
 + Lines 4 through 9 specify the two participants to this application, _Alice_ and _Bob_.
 + Line 10 marks the deployment of the the Reach program, which allows the program to start doing things.
+:::
 
 Before we go too much further, let's create a similar shell for our JavaScript frontend code.
 Open a new file named `index.mjs` and fill it with this:
@@ -138,6 +140,7 @@ md5: ed82d3f3222714d10cfe0536c19f7e54
 
 This JavaScript code is similarly schematic and will be consistent across all of your test programs.
 
+:::diamondList
 + Line 1 imports the Reach standard library loader.
 + Line 2 imports your backend, which `./reach compile` will produce.
 + Line 3 loads the standard library dynamically based on the `REACH_CONNECTOR_MODE` environment variable.
@@ -145,14 +148,18 @@ This JavaScript code is similarly schematic and will be consistent across all of
 + Lines 6 and 7 create test accounts with initial endowments for Alice and Bob.
 This will only work on the Reach-provided developer testing network.
 + Line 9 has Alice deploy the application.
+:::
+
 :::note
 The program defined in [`rps-1-setup/index.rsh`](@{REPO}/examples/rps-1-setup/index.rsh) will only begin to run after it has been deployed via [rps-1-setup/index.mjs](@{REPO}/examples/rps-1-setup/index.mjs).
 :::
 
+:::diamondList
 + Line 10 has Bob attach to it.
 + Lines 13 through 15 initialize a backend for Alice.
 + Lines 16 through 18 initialize a backend for Bob.
 + Line 12 waits for the backends to complete.
+::: 
 
 This is now enough for Reach to compile and run our program. Let's try by running
 
@@ -201,11 +208,12 @@ load: /examples/rps-2-rps/index.rsh
 md5: 3ea7718e88c86dd41e97b503d7aa3b67
 range: 1-17
 ```
-
+:::diamondList
 + Lines 3 through 6 define a participant interact interface that will be shared between the two players.
 In this case, it provides two methods: `{!rsh} getHand`, which returns a number; and `{!rsh} seeOutcome`, which receives a number.
 + Lines 9 through 14 use this interface for both participants.
 Because of this line, `{!rsh} interact` in the rest of the program will be bound to an object with methods corresponding to these actions, which will connect to the frontend of the corresponding participant.
+:::
 
 Before continuing with the Reach application, let's move over to the JavaScript interface and implement these methods in our frontend.
 
@@ -214,13 +222,14 @@ load: /examples/rps-2-rps/index.mjs
 md5: 997ba05e8422c076a3c29cd5bcf427aa
 range: 12-32
 ```
-
+:::diamondList
 + Lines 12 and 13 define arrays to hold the meaning of the hands and outcomes.
 + Line 14 defines a constructor for the `{!js} Player` implementation.
 + Lines 15 through 19 implement the `{!js} getHand` method.
 + Lines 20 through 22 implement the `{!js} seeOutcome` method.
 + Finally, lines 27 and 30 instantiate the implementation once for Alice and once for Bob.
 These are the actual objects that will be bound to `{!rsh} interact` in the Reach program.
+:::
 
 There should be nothing interesting or controversial about these implementations; that's the point of Reach: we get to just write normal business logic without worrying about the details of the consensus network and decentralized application.
 
@@ -252,7 +261,7 @@ load: /examples/rps-2-rps/index.rsh
 md5: 3ea7718e88c86dd41e97b503d7aa3b67
 range: 17-21
 ```
-
+:::diamondList
 + Line 17 states that this block of code is something that _only_ `{!rsh} Alice` performs.
 + That means that the variable, `{!rsh} handAlice`, bound on line 18 is known only to Alice.
 + Line 18 binds that value to the result of interacting with Alice through the `{!rsh} getHand` method, which we wrote in JavaScript.
@@ -260,6 +269,7 @@ range: 17-21
 + Line 20 has Alice join the application by publishing the value to the consensus network, so it can be used to evaluate the outcome of the game.
 Once this happens, the code is in a "consensus step" where all participants act together.
 + Line 21 commits the state of the consensus network and returns to "local step" where individual participants can act alone.
+:::
 
 The next step is similar, in that Bob publishes his hand; however, we don't immediately commit the state, instead we compute the outcome of the game.
 
@@ -268,13 +278,14 @@ load: /examples/rps-2-rps/index.rsh
 md5: 3ea7718e88c86dd41e97b503d7aa3b67
 range: 23-29
 ```
-
+:::diamondList
 + Lines 23 through 26 match Alice's similar local step and joining of the application through a consensus transfer publication.
 + But, line 28 computes the outcome of the game before committing.
 (`{!rsh} (handAlice + (4 - handBob)) % 3` is a clever equation to compute the winner of a game of _Rock, Paper, Scissors!_ using modular arithmetic.
 Consider when `{!rsh} handAlice` is `{!rsh} 0` (i.e., `Rock`) and `{!rsh} handBob` is `{!rsh} 2` (i.e., `Scissors`),
 then this equation is `{!rsh} ((handAlice + (4 - handBob)) % 3) = ((0 + (4 - 2)) % 3) = ((0 + 2) % 3) = (2 % 3) = 2`,
 which is the last outcome, that is `Alice wins`, as we expect it to be.)
+:::
 
 Finally, we use the each form to have each of the participants send the final outcome to their frontends.
 
@@ -283,8 +294,9 @@ load: /examples/rps-2-rps/index.rsh
 md5: 3ea7718e88c86dd41e97b503d7aa3b67
 range: 31-33
 ```
-
+:::diamondList
 + Line 31 states that this is a local step that each of the participants performs.
+:::
 
 At this point, we can run the program and see its output by running
 
@@ -367,10 +379,11 @@ load: /examples/rps-3-bets/index.mjs
 md5: fc6187211ecfeacd41be9495aa22deaf
 range: 5-12
 ```
-
+:::diamondList
 + Line 9 shows a helpful function for displaying currency amounts with up to 4 decimal places.
 + Line 10 shows a helpful function for getting the balance of a participant and displaying it with up to 4 decimal places.
 + Lines 11 and 12 get the balance before the game starts for both Alice and Bob.
+:::
 
 Next, we'll update Alice's interface object to include her wager.
 
@@ -379,10 +392,11 @@ load: /examples/rps-3-bets/index.mjs
 md5: fc6187211ecfeacd41be9495aa22deaf
 range: 31-34
 ```
-
+:::diamondList
 + Line 32 splices the common `{!js} Player` interface into Alice's interface.
 + Line 33 defines her wager as `5` units of the network token.
 This is an example of using a concrete value, rather than a function, in a participant interact interface.
+:::
 
 For Bob, we'll modify his interface to show the wager and immediately accept it by returning.
 
@@ -391,8 +405,9 @@ load: /examples/rps-3-bets/index.mjs
 md5: fc6187211ecfeacd41be9495aa22deaf
 range: 35-40
 ```
-
+:::diamondList
 + Lines 37 through 39 define the `{!js} acceptWager` function.
+:::
 
 Finally, after the computation is over, we'll get the balance again and show a message summarizing the effect.
 
@@ -401,9 +416,10 @@ load: /examples/rps-3-bets/index.mjs
 md5: fc6187211ecfeacd41be9495aa22deaf
 range: 43-47
 ```
-
+:::diamondList
 + Lines 44 and 45 get the balances afterwards.
 + Lines 47 and 48 print out the effect.
+:::
 
 These changes to the frontend only deal with issues of presentation and interfacing.
 The actual business logic of making the wager and transferring the funds will happen in the Reach code.
@@ -417,9 +433,10 @@ load: /examples/rps-3-bets/index.rsh
 md5: 4116cbc1247ecc15271aa776eedf1676
 range: 1-19
 ```
-
+:::diamondList
 + Lines 9 through 12 define Alice's interface as the `{!rsh} Player` interface, plus an integer value called `{!rsh} wager`.
 + Lines 13 through 16 do the same for Bob, where he has a method called `{!rsh} acceptWager` that can look at the wager value.
+:::
 
 Each of the three parts of the application have to be updated to deal with the wager.
 Let's look at Alice's first step first.
@@ -429,10 +446,12 @@ load: /examples/rps-3-bets/index.rsh
 md5: 4116cbc1247ecc15271aa776eedf1676
 range: 19-25
 ```
-
+:::diamondList
 + Line 20 has Alice declassify the wager for transmission.
 + Line 23 is updated so that Alice shares the wager amount with Bob.
 + Line 24 has her transfer the amount as part of her publication.
+:::
+
 The Reach compiler would throw an exception if `{!rsh} wager` did not appear on line 23, but did appear on line 24.
 Change the program and try it.
 This is because the consensus network needs to be able to verify that the amount of network tokens included in Alice's publication match some computation available to consensus network.
@@ -444,10 +463,11 @@ load: /examples/rps-3-bets/index.rsh
 md5: 4116cbc1247ecc15271aa776eedf1676
 range: 27-32
 ```
-
+:::diamondList
 + Line 28 has Bob accept the wager.
 If he doesn't like the terms, his frontend can just not respond to this method and the DApp will stall.
 + Line 32 has Bob pay the wager as well.
+:::
 
 The DApp is now running in a consensus step and
 the contract itself now holds twice the wager amount.
@@ -458,12 +478,13 @@ load: /examples/rps-3-bets/index.rsh
 md5: 4116cbc1247ecc15271aa776eedf1676
 range: 34-41
 ```
-
+:::diamondList
 + Lines 35 through 38 compute the amounts given to each participant depending on the outcome by determining how many `{!rsh} wager` amounts each party gets.
 If the outcome is `{!rsh} 2`, `Alice wins`, then she gets two portions; while if it is `{!rsh} 0`, `Bob wins`, then he gets two portions; otherwise they each get one portion.
 + Lines 39 and 40 transfer the corresponding amounts.
 This transfer takes place from the contract to the participants, not from the participants to each other, because all of the funds reside inside of the contract.
 + Line 41 commits the state of the application and allows the participants to see the outcome and complete.
+:::
 
 At this point, we can run the program and see its output by running
 
@@ -609,9 +630,10 @@ load: /examples/rps-4-attack/index.rsh
 md5: bd577e73ff25f098ef38106416a3bff1
 range: 34-37
 ```
-
+:::diamondList
 + Line 35 requires that the dishonest version of Bob be used for the proof.
 + Line 36 conducts the proof by including an assert statement in the program.
+:::
 
 Before we had this line in the file, when we ran `./reach compile`, it would print out the message:
 
@@ -628,11 +650,10 @@ load: /examples/rps-4-attack/index.txt
 md5: 110e527c76781aa90248cd73afb2d87a
 range: 3-8
 ```
-
+:::diamondList
 + Line 7 is different and shows that more theorems have been proven about our program.
 It prints out five more, rather than one more, because the theorem is proved differently in the different verification modes.
-
----
+:::
 
 Many programming languages include [assertions](https://en.wikipedia.org/wiki/Assertion_(software_development)) like this,
 but Reach is one of a small category where the compiler doesn't just insert a runtime check for the property,
@@ -678,8 +699,9 @@ load: /examples/rps-4-attack/index-bad.rsh
 md5: c0015df1e967946be01b3bdab70c9c12
 range: 27-41
 ```
-
+:::diamondList
 + Line 36 has `{!rsh} [1, 0]`, but should have `{!rsh} [2, 0]`.
+:::
 
 When we run `./reach compile rps-4-attack/index-bad.rsh`, it gives details about the error:
 
@@ -691,9 +713,11 @@ range: 5-32
 
 There's a lot of information in the compiler output that can help an experienced programmer track down the problem. But the most important parts are
 
+:::diamondList
 + Line 7 says that this is an attempt to prove the theorem that the balance at the end of the program is zero, which means that no network tokens are sealed in the contract forever.
 + Lines 10-20 describe the values that could cause the theorem to fail.
 + Lines 23-31 outline the theorem that failed.
+:::
 
 :::note
 Refer to @{seclink("how-to-read-verification-failures")} if you'd like to learn more about the details of this output.
@@ -715,10 +739,11 @@ load: /examples/rps-4-attack/index-fails.rsh
 md5: ee8173e8806e4b9757fe9b9e28a6d4b9
 range: 23-31
 ```
-
+:::diamondList
 + Line 27 contains a knowledge assertion that Bob cannot know Alice's value `{!rsh} handAlice` at this point in the program.
 In this case, it is obvious that this is not true, because Alice shares `{!rsh} handAlice` at line 23.
 In many cases, this is not obvious and Reach's [automatic verification](##guide-assert) engine has to reason about how values that Bob _does know_ are connected to values that might be related to Alice's secret values.
+:::
 
 When we run `./reach run`, it reports that this assertion is false:
 
@@ -745,10 +770,11 @@ load: /examples/rps-5-trust/index.rsh
 md5: 68fff9bccfaf2c29fba5ad5c1b41af17
 range: 1-7
 ```
-
+:::diamondList
 + Line 1 is the usual Reach version header.
 + Lines 3 and 4 define enumerations for the hands that may be played, as well as the outcomes of the game.
 + Lines 6 and 7 define the function that computes the winner of the game.
+:::
 
 When we first wrote _Rock, Paper, Scissors!_, we asked you to trust that this formula for computing the winner is correct, but it is good to actually check.
 One way to check would be to implement a JavaScript frontend that didn't interact with a real user, nor would it randomly generate values, but instead, it would return specific testing scenario values and check that the output is as expected.
@@ -760,8 +786,9 @@ load: /examples/rps-5-trust/index.rsh
 md5: 68fff9bccfaf2c29fba5ad5c1b41af17
 range: 9-11
 ```
-
+:::diamondList
 + Line 9 makes an assertion that when Alice plays Rock and Bob plays Paper, then Bob wins as expected.
+::: 
 
 But, Reach's [automatic verification](##guide-assert) allows us to express even more powerful statements about our program's behavior.
 For example, we can state that no matter what values are provided for `{!rsh} handAlice` and `{!rsh} handBob`, `{!rsh} winner` will always provide a valid outcome:
@@ -830,13 +857,14 @@ load: /examples/rps-5-trust/index.rsh
 md5: 68fff9bccfaf2c29fba5ad5c1b41af17
 range: 37-45
 ```
-
+:::diamondList
 + Line 39 has Alice compute her hand, but _not_ declassify it.
 + Line 40 has her compute a commitment to the hand.
 It comes with a secret "salt" value that must be revealed later.
 This "salt" was generated by the `{!rsh} random` function inside of `{!rsh} hasRandom` and it's why we pass `{!rsh} interact` to this function.
 + Line 41 has Alice declassify the commitment.
 + Line 43 has her publish them, and line 44 has her include the wager funds in the publication.
+:::
 
 At this point, we can state the knowledge assertion that Bob can't know either the hand or the "salt" and continue with his part of the program.
 
@@ -851,10 +879,11 @@ load: /examples/rps-5-trust/index.rsh
 md5: 68fff9bccfaf2c29fba5ad5c1b41af17
 range: 47-54
 ```
-
+:::diamondList
 + Line 47 states the knowledge assertion.
 + Lines 48 through 53 are unchanged from the original version.
 + Line 54 has the transaction commit, without computing the payout, because we can't yet, because Alice's hand is not yet public.
+:::
 
 We now return to Alice who can reveal her secrets.
 
@@ -863,11 +892,12 @@ load: /examples/rps-5-trust/index.rsh
 md5: 68fff9bccfaf2c29fba5ad5c1b41af17
 range: 56-61
 ```
-
+:::diamondList
 + Lines 57 and 58 have Alice declassify the secret information.
 + Line 60 has her publish it.
 + Line 61 checks that the published values match the original values.
 This will always be the case with honest participants, but dishonest participants may violate this assumption.
+:::
 
 The rest of the program is unchanged from the original version, except that it uses the new names for the outcomes:
 
@@ -992,9 +1022,10 @@ load: /examples/rps-6-timeouts/index.rsh
 md5: b390a5f23cadf2f5da1533378a83f52f
 range: 20-25
 ```
-
+:::diamondList
 + Line 24 introduces a new method, `{!rsh} informTimeout`, that receives no arguments and returns no information.
 We'll call this function when a timeout occurs.
+:::
 
 We'll make a slight tweak to our JavaScript frontend to be able to receive this message and display it on the console.
 
@@ -1012,11 +1043,12 @@ load: /examples/rps-6-timeouts/index.rsh
 md5: b390a5f23cadf2f5da1533378a83f52f
 range: 28-32
 ```
-
+:::diamondList
 + Line 31 adds the `{!js} deadline` field to Alice's participant interact interface.
 It is defined as some number of time delta units,
 which are an abstraction of the underlying notion of network time in the consensus network.
 In many networks, like Ethereum, this number is a number of blocks.
+:::
 
 Next, at the start of the Reach application, we'll define a helper function to inform each of the participants of the timeout by calling this new method.
 
@@ -1025,10 +1057,11 @@ load: /examples/rps-6-timeouts/index.rsh
 md5: b390a5f23cadf2f5da1533378a83f52f
 range: 39-43
 ```
-
+:::diamondList
 + Line 39 defines the function as an arrow expression.
 + Line 40 has each of the participants perform a local step.
 + Line 41 has them call the new `{!rsh} informTimeout` method.
+:::
 
 We will have Alice declassify and publish the `{!rsh} deadline` for later timeout clauses.
 
@@ -1040,9 +1073,10 @@ load: /examples/rps-6-timeouts/index.rsh
 md5: b390a5f23cadf2f5da1533378a83f52f
 range: 45-54
 ```
-
+:::diamondList
 + Line 50 has Alice declassify the `{!rsh} deadline` time delta.
 + Line 52 now has Alice publish the `{!rsh} deadline`.
+:::
 
 However, we will adjust Bob's first message, because if he fails to participate, then Alice's initial wager will be lost to her.
 
@@ -1051,8 +1085,9 @@ load: /examples/rps-6-timeouts/index.rsh
 md5: b390a5f23cadf2f5da1533378a83f52f
 range: 61-64
 ```
-
+:::diamondList
 + Line 63 adds a timeout handler to Bob's publication.
+:::
 
 The timeout handler specifies that if Bob does not complete this action within a time delta of `{!rsh} deadline`, then the application transitions to the step given by the arrow expression.
 In this case, the timeout code is a call to `{!rsh} closeTo`, which is a Reach standard library function that allows anyone to send a message and transfer all of the funds in the contract to Alice, then call the given function afterwards.
@@ -1083,12 +1118,12 @@ load: /examples/rps-6-timeouts/index.mjs
 md5: f1852dd1b33b99dcac138ee2c7fab9f2
 range: 34-53
 ```
-
+:::diamondList
 + Line 38 has Alice specify a `{!js} deadline` of ten blocks.
 + Lines 42 through 51 redefine Bob's `{!js} acceptWager` method as an asynchronous function,
 where half of the time it will take at least ten blocks on the Ethereum network by waiting for ten units of time to pass.
 We know that ten is the value of `{!js} deadline`, so this will cause a timeout.
-
+:::
 ---
 
 Let's run the program and see what happens:
@@ -1176,10 +1211,11 @@ load: /examples/rps-7-loops/index.mjs
 md5: 6af4573c7186ac0f544f46341767cff1
 range: 19-38
 ```
-
+:::diamondList
 + Lines 24 through 29 moves the forced timeout code that we wrote for Bob's `{!js} acceptWager` function into this method.
 We also change the threshold so that timeouts only happen 1% of the time.
 This isn't a very interesting behavior, so we'll make it much less frequent.
+:::
 
 We also adjust Bob's `{!js} acceptWager` function to remove the timeout code, since we're testing that differently now.
 It's just a matter of reverting to the simpler version from before.
@@ -1189,9 +1225,9 @@ load: /examples/rps-7-loops/index.mjs
 md5: 6af4573c7186ac0f544f46341767cff1
 range: 40-52
 ```
-
+:::diamondList
 + Lines 48 through 50 have the simpler `{!js} acceptWager` method for Bob.
-
+:::
 ---
 
 Now, let's look at the Reach application.
@@ -1221,19 +1257,19 @@ load: /examples/rps-7-loops/index.rsh
 md5: ee287e712cdfe8d91bbb038c383d25d3
 range: 45-51
 ```
-
+:::diamondList
 + Line 49 has Alice publish the wager and deadline.
 + Line 50 has Alice pay the wager.
-
+:::
 ```
 load: /examples/rps-7-loops/index.rsh
 md5: ee287e712cdfe8d91bbb038c383d25d3
 range: 53-58
 ```
-
+:::diamondList
 + Line 56 has Bob pay the wager.
 + Line 58 does **not** have this consensus step commit.
-
+:::
 ---
 
 It's now time to begin the repeatable section of the application, where each party will repeatedly submit hands until the the outcome is not a draw.
@@ -1256,10 +1292,11 @@ load: /examples/rps-7-loops/index.rsh
 md5: ee287e712cdfe8d91bbb038c383d25d3
 range: 59-61
 ```
-
+:::diamondList
 + Line 59 defines the loop variable, `{!rsh} outcome`.
 + Line 60 states the invariant that the body of the loop does not change the balance in the contract account and that  `{!rsh} outcome` is a valid outcome.
 + Line 61 begins the loop with the condition that it continues as long as the outcome is a draw.
+:::
 
 Now, let's look at the body of the loop for the remaining steps, starting with Alice's commitment to her hand.
 
@@ -1268,9 +1305,10 @@ load: /examples/rps-7-loops/index.rsh
 md5: ee287e712cdfe8d91bbb038c383d25d3
 range: 62-71
 ```
-
+:::diamondList
 + Line 62 commits the last transaction, which at the start of the loop is Bob's acceptance of the wager, and at subsequent runs of the loop is Alice's publication of her hand.
 + Lines 64 through 71 are almost identical to the older version, except the wager is already known and paid.
+:::
 
 ```
 load: /examples/rps-7-loops/index.rsh
@@ -1295,10 +1333,11 @@ load: /examples/rps-7-loops/index.rsh
 md5: ee287e712cdfe8d91bbb038c383d25d3
 range: 89-91
 ```
-
+:::diamondList
 + Line 89 updates the `{!rsh} outcome` loop variable with the new value.
 + Line 90 continues the loop.
 Unlike most programming languages, Reach **requires** that `{!rsh} continue` be explicitly written in the loop body.
+:::
 
 The rest of the program could be exactly the same as it was before, except now it occurs outside of the loop, but we will simplify it, because we know that the outcome can never be a draw.
 
@@ -1307,9 +1346,10 @@ load: /examples/rps-7-loops/index.rsh
 md5: ee287e712cdfe8d91bbb038c383d25d3
 range: 93-95
 ```
-
+:::diamondList
 + Line 93 asserts that the outcome is never draw, which is trivially true because otherwise the `{!rsh} while` loop would not have exited.
 + Line 94 transfers the funds to the winner.
+:::
 
 ---
 
@@ -1395,40 +1435,44 @@ load: /examples/rps-8-interact/index.mjs
 md5: 9f824fcd58e5fdda4f4761b99093cfdc
 range: 1-4
 ```
-
+:::diamondList
 + Line 1 has been updated to import the `ask` object of `@reach-sh/stdlib`, the Reach standard library.
 We'll see how `ask` is used below.
 + Lines 2, and 3 are the same as before: importing the standard library and the backend.
+:::
 
 ```
 load: /examples/rps-8-interact/index.mjs
 md5: 9f824fcd58e5fdda4f4761b99093cfdc
 range: 5-10
 ```
-
+:::diamondList
 + Lines 5 through 8 ask the question whether they are playing as Alice and expect a "Yes" or "No" answer.
 `{!js} ask.ask` presents a prompt and collects a line of input until its argument does not error.
 `{!js} ask.yesno` errors if it is not given "y" or "n".
+:::
 
 ```
 load: /examples/rps-8-interact/index.mjs
 md5: 9f824fcd58e5fdda4f4761b99093cfdc
 range: 11-27
 ```
-
+:::diamondList
 + Lines 14 through 17 present the user with the choice of creating a test account if they can or inputting a secret to load an existing account.
 + Line 19 creates the test account as before.
 + Line 25 loads the existing account.
+:::
 
 ```
 load: /examples/rps-8-interact/index.mjs
 md5: 9f824fcd58e5fdda4f4761b99093cfdc
 range: 28-39
 ```
-
+:::diamondList
 + Line 29 branches based on whether the player is running as Alice, who must deploy the contract, or Bob, who must attach to it.
 + Lines 30 through 32 deploy it and print out public information (`{!js} ctc.getInfo`) that can be given to the other player when it becomes available.
 + Lines 34 through 39 request, parse, and process this information.
+:::
 
 ```
 load: /examples/rps-8-interact/index.mjs
@@ -1669,7 +1713,7 @@ load: /examples/rps-9-web/index.js
 md5: 5e5c8976731882c06e7f094e05ca43b3
 range: 39-41
 ```
-
+:::diamondList
 + On line 19, we initialize the component state to display @{seclink("tut-9-ConnectAccount")}.
 + On lines 21 thru 31, we hook into [React's `{!js} componentDidMount` lifecycle event](https://reactjs.org/docs/react-component.html#componentdidmount), which is called when the component starts.
 + On line 22, we use `{!js} getDefaultAccount`, which accesses the default browser account.
@@ -1678,6 +1722,7 @@ For example, when used with Ethereum, it can discover the currently-selected Met
 + On line 27, if `{!js} canFundFromFaucet` was `{!js} true`, we set the component state to display @{seclink("tut-9-FundAccount")}.
 + On line 29, if `{!js} canFundFromFaucet` was `{!js} false`, we set the component state to skip to @{seclink("tut-9-DeployerOrAttacher")}.
 + On line 39, we render the appropriate view from [rps-9-web/views/AppViews.js](@{REPO}/examples/rps-9-web/views/AppViews.js).
+:::
 
 ### {#tut-9-ConnectAccount} Connect Account dialog
 
@@ -1693,12 +1738,13 @@ load: /examples/rps-9-web/index.js
 md5: 5e5c8976731882c06e7f094e05ca43b3
 range: 32-36
 ```
-
+:::diamondList
 + On lines 32 thru 35, we define what happens when the user clicks the `Fund Account` button.
 + On line 33, we transfer funds from the faucet to the user's account.
 + On line 34, we set the component state to display @{seclink("tut-9-DeployerOrAttacher")}.
 + On line 36, we define what to do when the user clicks the `Skip` button,
 which is to set the component state to display @{seclink("tut-9-DeployerOrAttacher")}.
+:::
 
 When we combine this with the view ([rps-9-web/views/AppViews.js](@{REPO}/examples/rps-9-web/views/AppViews.js#L30-L54)) it will look like:
 ![](./rps-9-web/FundAccount.png)
@@ -1738,7 +1784,7 @@ load: /examples/rps-9-web/index.js
 md5: 5e5c8976731882c06e7f094e05ca43b3
 range: 42-55
 ```
-
+:::diamondList
 + On line 43, we provide the `{!js} random` callback
 + On lines 44 thru 50, we provide the `{!js} getHand` callback.
 + On lines 45 thru 47, we set the component state to display @{seclink("tut-9-GetHand")},
@@ -1749,6 +1795,7 @@ we set the component state to display @{seclink("tut-9-WaitingForResults")}.
 which set the component state to display @{seclink("tut-9-Done")} and @{seclink("tut-9-Timeout")}, respectively.
 + On line 53, we define what happens when the user clicks `Rock`, `Paper`, or `Scissors`:
 The `{!js} Promise` from line 45 is resolved.
+:::
 
 ### {#tut-9-GetHand} Get Hand dialog
 
@@ -1791,7 +1838,7 @@ load: /examples/rps-9-web/index.js
 md5: 5e5c8976731882c06e7f094e05ca43b3
 range: 56-72
 ```
-
+:::diamondList
 + On line 59, we set the component state to display @{seclink("tut-9-SetWager")}.
 + On line 61, we define what to do when the user clicks the `Set Wager` button,
 which is to set the component state to display @{seclink("tut-9-Deploy")}.
@@ -1805,7 +1852,7 @@ as the participant interact interface object.
 + On lines 68 and 69, we set the component state to display @{seclink("tut-9-WaitingForAttacher")},
 which displays the deployed contract info as JSON.
 + On line 71, we render the appropriate view from [rps-9-web/views/DeployerViews.js](@{REPO}/examples/rps-9-web/views/DeployerViews.js).
-
+:::
 ### {#tut-9-SetWager} Set Wager dialog
 
 The dialog used to set the wager ([rps-9-web/views/DeployerViews.js](@{REPO}/examples/rps-9-web/views/DeployerViews.js#L20-L38)) looks like:
@@ -1844,7 +1891,7 @@ load: /examples/rps-9-web/index.js
 md5: 5e5c8976731882c06e7f094e05ca43b3
 range: 73-95
 ```
-
+:::diamondList
 + On line 76, we initialize the component state to display @{seclink("tut-9-Attach")}.
 + On lines 78 thru 82, we define what happens when the user clicks the `Attach` button.
 + On line 79, we call `{!js} acc.attach`
@@ -1857,7 +1904,7 @@ and wait for a `{!js} Promise` which can be resolved via user interaction.
 + On lines 89 thru 92, we define what happens when the user clicks the `Accept Terms and Pay Wager` button:
 the `{!js} Promise` from line 90 is resolved, and we set the component state to display @{seclink("tut-9-WaitingForTurn")}.
 + On line 93, we render the appropriate view from [rps-9-web/views/AttacherViews.js](@{REPO}/examples/rps-9-web/views/AttacherViews.js)
-
+:::
 ### {#tut-9-Attach} Attach dialog
 
 The dialog used to attach ([rps-9-web/views/AttacherViews.js](@{REPO}/examples/rps-9-web/views/AttacherViews.js#L18-L39)) looks like:

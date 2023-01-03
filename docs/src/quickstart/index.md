@@ -15,14 +15,11 @@ Reach requires [WSL 2](https://docs.microsoft.com/en-us/windows/wsl/install) and
 
 ## {#qs-win-prereqs} Prerequisites
 
-* Windows 10 installed with version 2004 or higher,
-
-or
-
-* Windows 11
-
-* Virtualization Technology (VT-x) enabled on the BIOS
-
+:::discList
++ Windows 10 installed with version 2004 or higher.
++ Windows 11
++ Virtualization Technology (VT-x) enabled on the BIOS
+:::
 ## {#qs-win-install} Installation
 
 Click the Windows icon, type `Powershell`, and then click `Run as Administrator`.
@@ -133,7 +130,7 @@ $ curl https://docs.reach.sh/reach -o reach ; chmod +x reach
 
 Reach is successfully downloaded if the following command returns a version number:
 
-```
+``` cmd
 $ ./reach version
 ```
 
@@ -146,7 +143,9 @@ Reach requires [make](https://en.wikipedia.org/wiki/Make_(software)), [Docker En
 
 ## {#qs-linux-prereqs} Prerequisites
 
-* A version of Linux compatible with Docker.
+:::discList
++ A version of Linux compatible with Docker.
+:::
 
 Our instructions are written assuming you're using the most recent version of Ubuntu.
 Check the [Docker Engine](https://docs.docker.com/engine/install/) page for supported distros.
@@ -252,7 +251,7 @@ $ curl https://docs.reach.sh/reach -o reach ; chmod +x reach
 
 Reach is successfully downloaded if the following command returns a version number:
 
-```
+``` cmd
 $ ./reach version
 ```
 

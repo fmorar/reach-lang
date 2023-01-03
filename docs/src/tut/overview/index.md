@@ -20,9 +20,9 @@ The network also allows the creation of "contracts" that ensure that all agents 
 The details of these "contracts" are specific to each consensus network, but they are implicitly trusted by all agents and principals because their operation can be independently verified to match the previously agreed-upon rules.
 
 A single Reach program incorporates all aspects of a DApp:
-+ Participant backends are the agents acting on behalf of the principals.
-+ Frontends are the technical representation of the interface between the participants and the principals.
-+ A contract enforces the rules of the program, including the order of operation.
+* Participant backends are the agents acting on behalf of the principals.
+* Frontends are the technical representation of the interface between the participants and the principals.
+* A contract enforces the rules of the program, including the order of operation.
 
 In Reach, a programmer only needs to specify the actions of participants---what they do individually and what they do in unison.
 The Reach compiler automatically derives a contract for the consensus network via a connector that enforces these rules.
@@ -31,13 +31,10 @@ The Reach compiler automatically derives a contract for the consensus network vi
 
 Let's look at a simple Reach program where two principals, Alice and Bob, interact. In this DApp, Alice has some information that Bob might want and she has an amount of network tokens in mind that she'd like to trade for it.
 
-:::note
-You can look at the entire example program by visiting [overview/index.rsh](@{REPO}/examples/overview/index.rsh).
-:::
 
-:::note
-Get language support for Reach in your editor by visiting [the guide on editor support](##guide-editor-support).
-:::
+* You can look at the entire example program by visiting [overview/index.rsh](@{REPO}/examples/overview/index.rsh).
+* Get language support for Reach in your editor by visiting [the guide on editor support](##guide-editor-support).
+
 
 The main part of the program looks like this:
 
@@ -46,7 +43,7 @@ load: /examples/overview/index.rsh
 md5: c3ba149f23c49dec516123979898b14b
 range: 1-15
 ```
-
+:::diamondList
 + Line 1 specifies that this is a Reach program.
 + Line 2 specifies that this program will be compiled with strict mode, which enables unused variable checks.
 + Line 4 defines the main export from this program. `main` is the default used by Reach.
@@ -56,19 +53,17 @@ range: 1-15
 + Line 9 specifies that the program identifier `{!rsh} B` will represent the Bob participant.
 + Lines 10 and 11 specify the interface for Bob, which includes a function named `want`, that takes a number and returns `{!rsh} null`, as well as a function named `got`, that receives the information.
 + Finally, line 13, deploys the DApp.
-
 The elided lines, 14 through 34, contain the body of the application, which we can divide into four parts.
-
 ```
 load: /examples/overview/index.rsh
 md5: c3ba149f23c49dec516123979898b14b
 range: 15-18
 ```
-
 + Lines 15 and 16 specify that Alice takes a local step where she declassifies the amount of tokens requested.
 In Reach, all values from the frontend are secret until explicitly made public with declassify.
 + Line 17 has Alice join the application by publishing that value, and the logic of the program transitions to specifying what the contract does.
 + Line 18 has the contract commit to these values and continue the rest of the program.
+:::
 
 At this point, Bob's backend has learned the value of `{!rsh} request` and can deliver it to Bob's frontend for his approval. This happens next.
 
@@ -77,11 +72,12 @@ load: /examples/overview/index.rsh
 md5: c3ba149f23c49dec516123979898b14b
 range: 20-23
 ```
-
+:::diamondList
 + Lines 20 and 21 have Bob perform that delivery.
 `{!rsh} interact.want` doesn't explicitly return a boolean because the frontend cannot return if Bob doesn't want to continue.
 A better version of this program might return `{!rsh} false` and have that communicated to Alice.
 + Lines 22 and 23 have Bob join the application and submit a payment matching the appropriate amount, and then the contract commits.
+:::
 
 It's now Alice's turn again:
 
@@ -90,11 +86,12 @@ load: /examples/overview/index.rsh
 md5: c3ba149f23c49dec516123979898b14b
 range: 25-29
 ```
-
+:::diamondList
 + Lines 25 and 26 specify that Alice declassifies the information.
 + Line 27 has her publish it.
 + Line 28 has the contract transfer the requested amount to her.
 + Line 29 commits the transactions on the consensus network.
+:::
 
 The only thing left is for Bob's backend to deliver the information to his frontend.
 
@@ -103,11 +100,10 @@ load: /examples/overview/index.rsh
 md5: c3ba149f23c49dec516123979898b14b
 range: 31-33
 ```
-
+:::diamondList
 + Line 31 and 32 use an interaction expression to transfer the information to the frontend.
 + Line 33 exits the program.
-
----
+:::
 
 Reach programmers don't need to think about details like _contract storage_, _protocol diagrams_, _state validation_, or _network details_; instead, they can focus exclusively on the business logic of their application.
 
@@ -196,7 +192,7 @@ The program is just a few dozen lines long and the shell of it is quite simple:
 load: /examples/overview/index.mjs
 md5: b0ab403c2babb38238d85d34b318316a
 ```
-
+:::diamondList
 + Lines 1 and 2 import the Reach standard library loader and the compiled app backend.
 + Line 4 dynamically loads the appropriate network-specific Reach standard library,
 based on the `REACH_CONNECTOR_MODE` environment variable.
@@ -206,7 +202,7 @@ All of Reach's network-specific standard libraries adhere to a common interface 
 + Line 10 has Bob attach to the contract.
 The value `{!js} ctcAlice` contains no secret information and could easily be printed out and shared with Bob outside of the consensus network.
 + Lines 12 through 21 launch the backends and wait for their completion. We'll look at the details in a moment.
-
+:::
 This code, similar for all test programs, demonstrates how straightforward it is to scaffold a Reach application for testing.
 
 Let's look at initializing and interfacing each participant, starting with Alice.
@@ -216,11 +212,11 @@ load: /examples/overview/index.mjs
 md5: b0ab403c2babb38238d85d34b318316a
 range: 13-16
 ```
-
+:::diamondList
 + Line 13 uses the contract handle associated with Alice's account to run the Alice participant backend, passing an object which holds the interact functions.
 + Line 14 provides the `{!rsh} request` value.
 + Line 15 provides the `{!rsh} info` value.
-
+:::
 Let's look at Bob next.
 
 ```
@@ -228,12 +224,11 @@ load: /examples/overview/index.mjs
 md5: b0ab403c2babb38238d85d34b318316a
 range: 17-20
 ```
-
+:::diamondList
 + Line 17 initializes Bob just like Alice, although we use the `{!js} p` short-hand.
 + Line 18 provides his `{!rsh} want` function, which produces a log message and always accepts.
 + Line 19 provides his `{!rsh} got` function, which displays the secret on the console as well.
-
----
+:::
 
 Reach completely abstracts all the details of the chosen consensus network from the programmer, except for those directly impinging on business decisions, like the amounts of currency transacted.
 Reach allows programmers to focus on the business logic of their application at every stage, from the core application to the interfacing elements.
@@ -258,14 +253,15 @@ $ reach run
 
 And then Reach
 
+:::discList
 + compiles [overview/index.rsh](@{REPO}/examples/overview/index.rsh);
 + creates a temporary Node.js package;
 + builds a Docker image based on Reach's standard image for the package; and,
 + runs the application connected to the specified consensus network's devnet image.
+:::
 
 On typical developer laptops, this entire process takes seconds and can be completely integrated into existing development [IDEs](##guide-editor-support), like VSCode, so Reach developers can compile, verify, build, launch, and test their Reach app with a single command.
 
----
 
 Reach completely abstracts all the details of building and maintaining consensus network test environments and build scripts from the programmer, so they can focus exclusively on the business logic of their application.
 In fact, Reach works for multiple networks, so if we instead run
@@ -375,14 +371,18 @@ For example, it provides no protection to Bob in the event that Alice fails to d
 Reach allows you to abstract away the low-level details of your decentralized program and focus on these sorts of bigger picture issues.
 In the rest of [the guide](##guide), we discuss design issues like this. For example,
 
+:::discList
 + Effectively using [automatic verification](##guide-assert) to check your application;
 + Fortifying your application against [non-participation](##guide-timeout);
 + Building [interaction abstractions](##guide-abstract) for related applications.
+:::
 
 However, unless you're ready to dive deep now, the next steps for you are to:
 
+:::discList
 + [Install Reach](##ref-install);
 + Work through the [tutorial](##tut);
 + Join [the Discord community](@{DISCORD}).
+:::
 
 Thanks for being part of Reach!

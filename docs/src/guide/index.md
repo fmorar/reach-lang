@@ -5,6 +5,8 @@ They aim to teach the "Why" of aspects of some Reach features and discuss the ma
 Indeed, many of these points are relevant to all DApp developers, because the problems appear in all applications.
 
 The following guides are available:
+
+:::discList
 + @{seclink("guide-windows")}
 + @{seclink("guide-versions")}
 + @{seclink("guide-solidity")}
@@ -27,3 +29,4 @@ The following guides are available:
 + @{seclink("guide-reach")}
 + @{seclink("guide-limits")}
 + @{seclink("guide-roadmap")}
+:::

@@ -43,9 +43,15 @@ const maxColWidth = '280px';
 let winWidth = getWinWidthStr();
 
 const establishDisplay = () => {
+  const search= document.querySelector(".navbar-nav .nav-link")
   const { bookPath, hasOtp } = currentPage;
   establishDisplayFor('book-col', 'div.show-book-col', bookPath);
   establishDisplayFor('otp-col', 'button.show-otp-col', hasOtp);
+  if (winWidth == 'sm' || winWidth == 'xs') {
+    search.innerHTML= `<i class="fas fa-search fa-lg" id="search-icon"></i>`
+  } else {
+    search.innerHTML= `<img src="/assets/img/search-light.svg" id="search-icon" alt="search bar">`
+  }
 };
 
 const establishDisplayFor = (id, selector, property) => {
@@ -61,19 +67,25 @@ const establishDisplayFor = (id, selector, property) => {
   } else if (winWidth == 'sm' || winWidth == 'xs') {
     element.style.maxWidth = 'none';
     element.style.display = 'none';
-    button.style.display = 'block';
+    button.style.display = 'flex';
   }
 
   const prev = localStorage.getItem(id);
   switch (prev) {
     case 'block':
+      if (winWidth == 'sm' || winWidth == 'xs'){
+        doc.querySelector('.overlay').style.display = "block";
+        doc.querySelector('#otp-col section').style.display = "none";
+      } else {
+        doc.querySelector('#otp-col section').style.display = "block";
+      }
       element.style.display = 'block';
       button.style.display = 'none';
       break;
 
     case 'none':
       element.style.display = 'none';
-      button.style.display = 'block';
+      button.style.display = 'flex';
       break;
 
     default:
@@ -158,25 +170,49 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
   if (configJson.bookPath !== undefined && configJson.bookPath !== currentPage.bookPath) {
     let bookHtml = doc.createRange().createContextualFragment(await axiosGetData(`${window.location.origin}${hh(configJson.bookPath)}book.html`));
     doc.querySelectorAll('#book-col div.dynamic').forEach(n => n.remove());
-    doc.querySelector('#book-col').append(bookHtml);
+    function insertAfter(newNode, existingNode) {
+      existingNode.parentNode.insertBefore(newNode, existingNode.nextSibling);
+    }
+    insertAfter(bookHtml, document.getElementById("toggle-icon"));
+
+    doc.querySelectorAll("#book-col .chapter-title").forEach((item,index)=>{
+      if (winWidth == 'sm' || winWidth == 'xs'){
+        item.addEventListener("click", ()=>{
+          doc.querySelector('.overlay').style.display = "none";
+          doc.querySelector('#book-col').style.display = "none";
+        }, false)
+      }
+      if (index >= 25 && index <= 27){
+        if(index === 25){
+          item.parentNode.classList.add('first-bottom-chapter')
+        }
+        item.classList.add('bottom-chapter');
+      }
+    })
 
     // On click chapter-icon.
     doc.querySelectorAll('#book-col i.chapter-icon').forEach(el => {
       el.addEventListener('click', (evt) => {
         const item = evt.target;
         const pages = item.closest('div.chapter').querySelector('div.pages');
-        if (item.classList.contains('fa-angle-right')) {
-          item.classList.remove('fa-angle-right');
-          item.classList.add('fa-angle-down');
+        const marker = item.nextSibling
+        if (item.classList.contains('fa-diamond')) {
+          item.classList.remove('fa-diamond');
+          item.classList.add('fa-caret-down');
+          marker.classList.remove('closed');
+          marker.classList.add('opened');
           pages.style.display = 'block';
         } else {
-          item.classList.remove('fa-angle-down');
-          item.classList.add('fa-angle-right');
+          item.classList.remove('fa-caret-down');
+          item.classList.add('fa-diamond');
+          marker.classList.remove('opened');
+          marker.classList.add('closed');
           pages.style.display = 'none';
         }
       });
     });
   }
+
   currentPage.bookPath = configJson.bookPath;
 
   // Write page title
@@ -201,57 +237,77 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
   const hlink = theader.querySelector("a");
   theader.remove();
   tspan.appendChild(hlink);
-  tspan.className += " refHeader"
+  tspan.class += " refHeader"
 
+  function groupBy(xs, f) {
+    return xs.reduce((r, v, i, a, k = f(v)) => ((r[k] || (r[k] = [])).push(v), r), {});
+}
   // If search page.
-  const searchInput = doc.getElementById('search-input');
+  const searchInput = doc.getElementById('reach-search-input');
   const { href } = window.location;
   const rawSearchQuery = href.split('search/#search')[1];
   const searchParams = new URLSearchParams(rawSearchQuery);
   const searchQuery = searchParams.get('q');
   if (searchInput) {
-    currentPage.bookPath = undefined;
     searchInput.focus();
     const searchResultsList = doc.getElementById('search-results-list');
     const search = async (_evt) => {
       const { hits } = await searchIndex.search(searchInput.value);
+      const groupedHits= groupBy(hits, (c) => c.pt)
       if ( ! hits.length ) { return; }
       searchResultsList.innerHTML = '';
-      hits.forEach((hit) => {
-        const sdClasses = [
-          'sdRef',
-          'sdTerm',
-          'sdHeader',
-          'sdPara',
-          'sdGHDis',
-        ];
-        const c = sdClasses[hit.t];
-        const e = doc.createElement('li');
-        e.classList.add(c);
-        const h = (cls, t) => {
-          const n = doc.createElement('span');
-          n.classList.add(cls);
-          n.innerText = t;
-          e.appendChild(n);
-        };
-        const a = doc.createElement('a');
-        a.classList.add('pt');
-        a.href = hit.objectID;
-        a.innerText = hit.pt;
-        e.appendChild(a);
-        if ( c === 'sdRef' ) {
-          h('symbol', hit.c);
-          h('scope', hit.s);
-        } else if ( c === 'sdTerm' ) {
-          h('term', hit.c);
-        } else if ( c === 'sdHeader' ) {
-          h('h', hit.c);
-        } else if ( c === 'sdPara' ) {
-          h('p', hit.c);
-        } else if ( c === 'sdGHDis' ) {
-          h('p', hit.c);
-        }
-        searchResultsList.append(e);
+      Object.entries(groupedHits).forEach(([key, value]) => {
+        const p = doc.createElement('p');
+        const d = doc.createElement('div');
+        p.innerHTML = key
+        p.classList.add("search-title");
+        d.classList.add("results-list");
+        searchResultsList.append(p);
+        searchResultsList.append(d);
+        value.forEach((hit)=>{
+          const sdClasses = [
+            'sdRef',
+            'sdTerm',
+            'sdHeader',
+            'sdPara',
+            'sdGHDis',
+          ];
+          const c = sdClasses[hit.t];
+          const e = doc.createElement('div');
+          const f = doc.createElement('div');
+          e.classList.add(c, "result-item");
+          const h = (cls, t) => {
+            const n = doc.createElement('span');
+            n.classList.add(cls);
+            n.innerText = t;
+            f.appendChild(n);
+          };
+          const a = doc.createElement('a');
+          a.classList.add('pt');
+          a.href = hit.objectID;
+          if ( c === 'sdRef' ) {
+            h('symbol', hit.c);
+            h('scope', hit.s);
+          } else if ( c === 'sdTerm' ) {
+            h('term', hit.c);
+          } else if ( c === 'sdHeader' ) {
+            h('h', hit.c);
+          } else if ( c === 'sdPara' ) {
+            h('p', hit.c);
+          } else if ( c === 'sdGHDis' ) {
+            h('p', hit.c);
+          }
+          e.appendChild(f)
+          e.innerHTML +=`
+          <div class="search-arrow">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="15" viewBox="0 0 18 15" fill="none">
+              <path d="M7 4V0L0 7L7 14V9.9C12 9.9 15.5 11.5 18 15C17 10 14 5 7 4Z" fill="currentColor" />
+            </svg>
+          </div>
+          `
+          a.appendChild(e)
+          searchResultsList.append(a);
+        })
       });
       updateHistory(`search?q=${searchInput.value}`);
       setClickFollowLink();
@@ -299,8 +355,10 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
     const pages = chapter && chapter.querySelector('div.pages');
     if (pages && pages.hasChildNodes()) {
       const icon = chapter.querySelector('i.chapter-icon');
-      icon.classList.remove('fa-angle-right');
-      icon.classList.add('fa-angle-down');
+      const marker = icon.nextSibling
+      icon.classList.remove('fa-diamond');
+      icon.classList.add('fa-caret-down');
+      marker.classList.add('opened');
       pages.style.display = 'block';
     }
   }
@@ -308,19 +366,53 @@ const getWebpage = async (folder, hash, shallUpdateHistory) => {
   // Establish correct display values.
   establishDisplay();
 
-  // Display book.
-  if (currentPage.bookPath != undefined) {
-    doc.getElementById('book-col').classList.remove('banish');
-    doc.querySelector('div.show-book-col').classList.remove('banish');
-  } else {
-    doc.getElementById('book-col').classList.add('banish');
-    doc.querySelector('div.show-book-col').classList.add('banish');
-  }
+  // Implement next section card 
+  const nextChapter= doc.createElement("div")
+  nextChapter.classList.add("next-chapter-container")
+  const activeIndex= Array.from(doc.querySelectorAll('.chapter-title')).indexOf(doc.querySelector(".active"))
+  const nextChapterInfo = await axiosGetData(`${doc.querySelectorAll('.chapter-title')[activeIndex + 1].href}index.md`);
+  const nextChapterHtml = doc.createRange().createContextualFragment(nextChapterInfo[1]);
+  const firstText = nextChapterHtml.querySelector("p")?.textContent
+  const shortDescription = firstText ? firstText.length > 200 ? firstText.substring(0,200) + "..." : firstText.substring(0, firstText.length - 2) : "";
+  const excludedChapters=["reach-top", "tuts"]
+ 
+if (!excludedChapters.includes(configJson.titleId) && activeIndex + 1 !==  Array.from(doc.querySelectorAll('.chapter-title')).length){
+  nextChapter.innerHTML +=`
+  <section class="p-2 next-chapter-card">
+    <a href="${doc.querySelectorAll('.chapter-title')[activeIndex + 1].href}">
+      <div class="first-row-chapter">
+        <div>
+          <p>Next DOC</p>
+          <p class="mt-2 next-chapter-title">
+              ${doc.querySelectorAll('.chapter-title')[activeIndex + 1].textContent}
+          </p>
+          <div class="next-chapter-content">
+          <div>
+          ${shortDescription ? `<p class="mt-2">
+          ${shortDescription}
+          </p>` : ""}
+          </div>
+          <svg xmlns="http://www.w3.org/2000/svg" width="46" height="46" viewBox="0 0 46 46" fill="none">
+            <path d="M22.8638 0.727051L18.9118 4.67899L34.5514 20.3466L0.441406 20.3466L0.441406 25.9522L34.5514 25.9522L18.9118 41.6198L22.8638 45.5718L45.2861 23.1494L22.8638 0.727051Z" fill="currentColor"/>
+          </svg>
+          </div>
+        </div>
+      </div>
+    </a>
+</section>
+          `
+  doc.querySelector('div#hh-viewer-wrapper div#hh-viewer').append(nextChapter);
+}
+ 
 
-  // Display page.
-  doc.querySelector('div#hh-page-header').style.display = configJson.hasPageHeader ? 'block' : 'none';
 
-  doc.getElementById('page-col').style.display = 'block';
+  // Display homepage styles.
+  doc.querySelector('div#hh-page-header .col').style.display = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? 'block' : 'none' : 'none';
+  doc.querySelector('div#hh-page-header').style.cssText = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '' : 'margin: 0;float:left;border:none' : 'margin: 0;float:left;border:none';
+  doc.getElementById('page-col').style.cssText = configJson.hasPageHeader && configJson.title !== "Getting Started" && 'display:flex;flex-direction:column;justify-content:space-between;padding:16px 24px';
+  doc.querySelector('#page-col').style.backgroundColor = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? 'var(--page-col)' : 'var(--light-mode-white)' : 'var(--page-col)';
+  doc.querySelector('#page-col').style.padding = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '16px 24px' : '16px 0 0 0' : '16px 0 0 0';
+  doc.querySelector('#page-col .footer').style.margin = configJson.hasPageHeader ? configJson.title !== "Getting Started" ? '0 -24px -16px -24px' : '0' : '0 -24px -16px -24px';
 
   // Display OTP.
   if (configJson.hasOtp) {
@@ -384,13 +476,19 @@ window.onpopstate = function (event) {
 
 const makeShowHide = (hideQ, showQ, showId) => {
   const f = (isHide) => {
+    const j = (isHide) => isHide ? 'none' : 'block';
     const g = (b) => b ? 'block' : 'none';
-    const x = g(isHide); const y = g(! isHide);
+    const i = (b) => b ? 'flex' : 'none';
+    const x = i(isHide); 
+    const y = g(! isHide);
+    const z = j(isHide);
     const q = isHide ? hideQ : showQ;
     doc.querySelector(q).addEventListener('click', (event) => {
       if (winWidth == 'sm' || winWidth == 'xs') {
-        doc.getElementById('page-col').style.display = x;
+        doc.querySelector('.overlay').style.display = z;
       }
+      console.log(showId,y)
+      console.log(showQ, x)
       doc.getElementById(showId).style.display = y;
       doc.querySelector(showQ).style.display = x;
     });
